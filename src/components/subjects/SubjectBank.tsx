@@ -5,7 +5,7 @@ import type { Subject } from '@/lib/types';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Droppable, Draggable } from 'react-beautiful-dnd';
-import { Lightbulb } from 'lucide-react'; // Or another suitable icon
+import { Lightbulb } from 'lucide-react'; 
 
 interface SubjectBankItemProps {
   subject: Subject;
@@ -14,7 +14,11 @@ interface SubjectBankItemProps {
 
 function SubjectBankItem({ subject, index }: SubjectBankItemProps) {
   return (
-    <Draggable draggableId={`bank-subject-${subject.id}`} index={index} type="SCHEDULED_ITEM">
+    <Draggable 
+      draggableId={`bank-subject-${subject.id}`} 
+      index={index} 
+      type="SCHEDULED_ITEM"
+    >
       {(provided, snapshot) => (
         <div
           ref={provided.innerRef}
@@ -24,7 +28,7 @@ function SubjectBankItem({ subject, index }: SubjectBankItemProps) {
           style={{
             ...provided.draggableProps.style,
             backgroundColor: snapshot.isDragging ? 'hsl(var(--primary-foreground))' : subject.color,
-            color: snapshot.isDragging ||tinycolor(subject.color).isLight() ? 'hsl(var(--card-foreground))' : 'hsl(var(--primary-foreground))', // Adjust text color for visibility
+            color: snapshot.isDragging ||tinycolor(subject.color).isLight() ? 'hsl(var(--card-foreground))' : 'hsl(var(--primary-foreground))',
           }}
         >
           <p className="font-medium text-sm">{subject.name}</p>
@@ -35,13 +39,11 @@ function SubjectBankItem({ subject, index }: SubjectBankItemProps) {
     </Draggable>
   );
 }
-// Helper for text color, you might want a more robust library like tinycolor2 if available
-// npm install tinycolor2 @types/tinycolor2
-// For now, a simple heuristic:
+
 const tinycolor = (color: string) => {
     if (!color || typeof color !== 'string' || !color.startsWith('#')) return { isLight: () => true };
     const hex = color.replace('#', '');
-    if (hex.length !== 6 && hex.length !== 3) return { isLight: () => true }; // Support 3-digit hex too
+    if (hex.length !== 6 && hex.length !== 3) return { isLight: () => true };
     let r, g, b;
     if (hex.length === 3) {
         r = parseInt(hex[0] + hex[0], 16);
@@ -71,21 +73,18 @@ export function SubjectBank({ subjects }: SubjectBankProps) {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <Droppable 
-          droppableId="subject-bank" 
-          isDropDisabled={true} 
+        <Droppable
+          droppableId="subject-bank"
+          type="SCHEDULED_ITEM"
+          isDropDisabled={true} // Cannot drop items onto the bank list itself
           isCombineEnabled={false}
           ignoreContainerClipping={false}
         >
-          {(provided, snapshot) => (
-            <ScrollArea 
-              className="h-[calc(100vh-250px)] pr-3" // Adjust height as needed
+          {(provided) => ( // snapshot removed as not used for isDropDisabled=true
+            <ScrollArea
+              className="h-[calc(100vh-250px)] pr-3" 
             >
-              <div
-                ref={provided.innerRef}
-                {...provided.droppableProps}
-                className="h-full" // Ensure the div takes up available space in scrollarea
-              >
+              <div ref={provided.innerRef} {...provided.droppableProps} className="h-full p-1">
                 {subjects.length === 0 && (
                   <p className="text-sm text-muted-foreground text-center py-4">
                     No subjects available. Add subjects using the "Subjects" button above.
@@ -99,11 +98,11 @@ export function SubjectBank({ subjects }: SubjectBankProps) {
             </ScrollArea>
           )}
         </Droppable>
-         {/* A droppable zone for deleting items dragged from the schedule */}
+        
         <Droppable 
           droppableId="subject-bank-delete-zone" 
-          isDropDisabled={false}
           type="SCHEDULED_ITEM"
+          isDropDisabled={false} // Can drop items here
           isCombineEnabled={false}
           ignoreContainerClipping={false}
         >
@@ -126,4 +125,3 @@ export function SubjectBank({ subjects }: SubjectBankProps) {
     </Card>
   );
 }
-

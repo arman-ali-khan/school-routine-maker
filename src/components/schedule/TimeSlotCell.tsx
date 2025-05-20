@@ -7,13 +7,13 @@ import { ScheduledItemCard } from './ScheduledItemCard';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import React from 'react'; // Import React for useState
+import React from 'react';
 
 interface TimeSlotCellProps {
   day: DayOfWeek;
   timeSlot: TimeSlot;
-  scheduledItems: ScheduledItem[]; // All scheduled items for lookup
-  subjects: Subject[]; // All subjects for lookup
+  scheduledItems: ScheduledItem[];
+  subjects: Subject[];
   onDeleteItem: (itemId: string) => void;
   addScheduledItem: (item: Omit<ScheduledItem, 'id'>) => ScheduledItem | null;
 }
@@ -32,7 +32,7 @@ export function TimeSlotCell({ day, timeSlot, scheduledItems, subjects, onDelete
       type="SCHEDULED_ITEM"
       isDropDisabled={false} 
       isCombineEnabled={false}
-      ignoreContainerClipping={false}
+      ignoreContainerClipping={false} 
     >
       {(provided, snapshot) => (
         <div
@@ -47,7 +47,7 @@ export function TimeSlotCell({ day, timeSlot, scheduledItems, subjects, onDelete
               item={itemInSlot} 
               subject={subjectDetails} 
               timeSlot={timeSlot} 
-              index={0} 
+              index={0} // Each cell is a list of one, so index is always 0
               onDelete={onDeleteItem}
             />
           ) : timeSlot.isBreak ? (
@@ -56,7 +56,7 @@ export function TimeSlotCell({ day, timeSlot, scheduledItems, subjects, onDelete
             <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
               <PopoverTrigger asChild>
                 <div className="w-full h-full flex items-center justify-center cursor-pointer hover:bg-primary/10 transition-colors" aria-label={`Add subject to ${day} at ${timeSlot.startTime}`}>
-                  {/* Intentionally empty, cell itself is the trigger */}
+                  {/* Cell itself is trigger for empty slots */}
                 </div>
               </PopoverTrigger>
               <PopoverContent className="w-64" side="bottom" align="start" sideOffset={5}>
@@ -73,7 +73,7 @@ export function TimeSlotCell({ day, timeSlot, scheduledItems, subjects, onDelete
                         className="w-full justify-start mb-1 h-auto py-1.5 px-2 text-left"
                         onClick={() => {
                           addScheduledItem({ subjectId: subject.id, day, timeSlotId: timeSlot.id });
-                          setIsPopoverOpen(false); // Close popover on selection
+                          setIsPopoverOpen(false); 
                         }}
                       >
                         <span style={{ backgroundColor: subject.color }} className="w-3 h-3 rounded-sm mr-2 border shrink-0" />
