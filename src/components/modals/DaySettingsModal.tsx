@@ -43,6 +43,7 @@ export function DaySettingsModal({
 
   useEffect(() => {
     if (isOpen) { 
+      // Deep copy for daySettings to ensure the modal edits a true local copy
       setCurrentDaySettings(JSON.parse(JSON.stringify(initialDaySettings))); 
       setCurrentDayOrder([...initialCustomDayOrder]); 
     }
@@ -124,7 +125,6 @@ export function DaySettingsModal({
                                       onCheckedChange={() => handleToggleActive(dayName)}
                                     />
                                   </div>
-                                  {/* Removed Working Day Toggle */}
                                 </div>
                               </li>
                             )}
