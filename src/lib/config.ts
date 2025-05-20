@@ -1,3 +1,4 @@
+
 import type { DayOfWeek, DaySetting, ScheduleData } from './types';
 
 export const DAYS_OF_WEEK: DayOfWeek[] = [
@@ -13,7 +14,7 @@ export const DAYS_OF_WEEK: DayOfWeek[] = [
 export const DEFAULT_DAY_SETTINGS: DaySetting[] = DAYS_OF_WEEK.map(day => ({
   name: day,
   isActive: !['Sunday', 'Saturday'].includes(day), // Monday-Friday active by default
-  isWorkingDay: !['Sunday', 'Saturday'].includes(day),
+  // isWorkingDay: !['Sunday', 'Saturday'].includes(day), // Removed
 }));
 
 export const DEFAULT_TIME_SLOTS_PRESET: { startTime: string, endTime: string, isBreak?: boolean }[] = [

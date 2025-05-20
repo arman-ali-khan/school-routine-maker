@@ -1,3 +1,4 @@
+
 export interface Subject {
   id: string;
   name: string;
@@ -18,7 +19,7 @@ export type DayOfWeek = 'Sunday' | 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursda
 export interface DaySetting {
   name: DayOfWeek;
   isActive: boolean;
-  isWorkingDay: boolean; // For visual distinction, actual scheduling might still be allowed
+  // isWorkingDay: boolean; // Removed: For visual distinction, actual scheduling might still be allowed
 }
 
 export interface ScheduledItem {

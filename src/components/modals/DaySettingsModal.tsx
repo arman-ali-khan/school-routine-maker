@@ -43,9 +43,7 @@ export function DaySettingsModal({
 
   useEffect(() => {
     if (isOpen) { 
-      // Deep copy for day settings to ensure modal edits don't affect parent state directly
       setCurrentDaySettings(JSON.parse(JSON.stringify(initialDaySettings))); 
-      // Shallow copy for custom day order as it's an array of strings
       setCurrentDayOrder([...initialCustomDayOrder]); 
     }
   }, [isOpen, initialDaySettings, initialCustomDayOrder]);
@@ -55,14 +53,6 @@ export function DaySettingsModal({
     setCurrentDaySettings(prev =>
       prev.map(day =>
         day.name === dayName ? { ...day, isActive: !day.isActive } : day
-      )
-    );
-  };
-
-  const handleToggleWorkingDay = (dayName: DayOfWeek) => {
-    setCurrentDaySettings(prev =>
-      prev.map(day =>
-        day.name === dayName ? { ...day, isWorkingDay: !day.isWorkingDay } : day
       )
     );
   };
@@ -91,7 +81,7 @@ export function DaySettingsModal({
         <DialogHeader>
           <DialogTitle>Manage Days</DialogTitle>
           <DialogDescription>
-            Activate/deactivate days, mark as working/non-working, and reorder their display.
+            Activate or deactivate days and reorder their display in the schedule.
           </DialogDescription>
         </DialogHeader>
         
@@ -100,9 +90,9 @@ export function DaySettingsModal({
             <ClientOnly fallback={<div className="p-4 text-center">Loading day settings...</div>}>
               <DragDropContext onDragEnd={onDragEnd}>
                 <Droppable 
-                  droppableId="daysOrder"
-                  isDropDisabled={false}
-                  isCombineEnabled={false}
+                  droppableId="daysOrder" 
+                  isDropDisabled={false} 
+                  isCombineEnabled={false} 
                   ignoreContainerClipping={false}
                 >
                   {(provided) => (
@@ -134,14 +124,7 @@ export function DaySettingsModal({
                                       onCheckedChange={() => handleToggleActive(dayName)}
                                     />
                                   </div>
-                                  <div>
-                                    <Label htmlFor={`working-${dayName}`} className="text-xs mr-2">Working</Label>
-                                    <Switch
-                                      id={`working-${dayName}`}
-                                      checked={daySetting.isWorkingDay}
-                                      onCheckedChange={() => handleToggleWorkingDay(dayName)}
-                                    />
-                                  </div>
+                                  {/* Removed Working Day Toggle */}
                                 </div>
                               </li>
                             )}

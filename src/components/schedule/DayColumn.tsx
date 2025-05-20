@@ -30,7 +30,8 @@ export function DayColumn({
   if (!day.isActive) return null;
 
   return (
-    <div className={`flex-1 min-w-[150px] ${!day.isWorkingDay ? 'opacity-70 bg-muted/20' : ''}`}>
+    // Removed styling based on isWorkingDay
+    <div className={`flex-1 min-w-[150px]`}>
       <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm p-2 text-center border-b border-r font-semibold shadow-sm">
         {day.name}
       </div>
@@ -53,5 +54,3 @@ export function DayColumn({
     </div>
   );
 }
-
-    
