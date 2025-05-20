@@ -102,6 +102,7 @@ export function SubjectBank({ subjects }: SubjectBankProps) {
          {/* A droppable zone for deleting items dragged from the schedule */}
         <Droppable 
           droppableId="subject-bank-delete-zone" 
+          isDropDisabled={false}
           isCombineEnabled={false}
           ignoreContainerClipping={false}
         >
@@ -124,3 +125,4 @@ export function SubjectBank({ subjects }: SubjectBankProps) {
     </Card>
   );
 }
+
