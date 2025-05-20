@@ -145,17 +145,21 @@ export function useSchedule() {
     const isSourceBank = sourceDroppableId === 'subject-bank';
     const isDestDeleteZone = destinationDroppableId === 'subject-bank-delete-zone';
 
+    // Case 1: Dragging from schedule to delete zone
     if (!isSourceBank && isDestDeleteZone) {
       const itemIdToDelete = draggableId.replace('scheduled-item-', '');
       deleteScheduledItem(itemIdToDelete);
+      // Toast for delete is handled within deleteScheduledItem
       return;
     }
 
+    // Case 2: Dragging to a schedule cell
     if (destinationDroppableId.startsWith('cell-')) {
       const [, destDayStr, destTimeSlotId] = destinationDroppableId.split('-');
       const destDay = destDayStr as DayOfWeek;
       const targetTimeSlot = data.timeSlots.find(ts => ts.id === destTimeSlotId);
 
+      // Prevent dropping into a break slot
       if (targetTimeSlot?.isBreak) {
         toast({ variant: "destructive", title: "Operation Failed", description: "Cannot place items in a break slot." });
         return;
@@ -163,18 +167,20 @@ export function useSchedule() {
       
       const existingItemInDest = data.scheduledItems.find(si => si.day === destDay && si.timeSlotId === destTimeSlotId);
 
+      // Subcase 2.1: Dragging from Subject Bank to an empty cell
       if (isSourceBank) {
-        const subjectId = draggableId.replace('bank-subject-', '');
         if (existingItemInDest) {
           toast({ variant: "destructive", title: "Slot Occupied", description: "This time slot is already taken. Drag from bank to an empty slot." });
           return;
         }
+        const subjectId = draggableId.replace('bank-subject-', '');
         addScheduledItem({ subjectId, day: destDay, timeSlotId: destTimeSlotId });
         // Toast for successful add is handled within addScheduledItem
         return;
       }
       
-      if (!isSourceBank) { // Dragging an item already on the schedule
+      // Subcase 2.2: Dragging an item already on the schedule
+      if (!isSourceBank) { 
         const itemIdToMove = draggableId.replace('scheduled-item-', '');
         const itemToMoveDetails = data.scheduledItems.find(si => si.id === itemIdToMove);
 
@@ -185,6 +191,7 @@ export function useSchedule() {
 
         if (existingItemInDest) { // Destination is occupied, swap items
           if (existingItemInDest.id === itemIdToMove) return; // Dragged to its own spot
+
           updateData(prev => ({
             ...prev,
             scheduledItems: prev.scheduledItems.map(si => {
@@ -241,6 +248,7 @@ export function useSchedule() {
       day: targetDay,
       timeSlotId: targetTimeSlotId,
     });
+    // Toast for successful paste is handled within addScheduledItem
   };
 
   const exportData = () => {
@@ -272,22 +280,24 @@ export function useSchedule() {
         const jsonString = e.target?.result as string;
         const importedData = JSON.parse(jsonString) as ScheduleData;
         
+        // Basic validation for key properties
         if (
           typeof importedData.subjects === 'undefined' ||
           typeof importedData.timeSlots === 'undefined' ||
           typeof importedData.daySettings === 'undefined' ||
           typeof importedData.scheduledItems === 'undefined' ||
-          typeof importedData.settings?.customDayOrder === 'undefined'
+          typeof importedData.settings?.customDayOrder === 'undefined' // Check nested property
         ) {
           throw new Error("Invalid data structure: Missing essential properties.");
         }
-        setData(importedData);
+        setData(importedData); // This will merge with defaults if some parts are missing due to the nature of useLocalStorage
         toast({ title: "Data Imported", description: "Your schedule has been imported successfully." });
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : "Invalid file or data format.";
         toast({ variant: "destructive", title: "Import Error", description: errorMessage });
         console.error("Import error:", error);
       } finally {
+        // Reset file input to allow re-uploading the same file if needed
         if (event.target) { 
             event.target.value = ''; 
         }
@@ -306,7 +316,7 @@ export function useSchedule() {
         logging: true,
         useCORS: true,
         scale: 2, // Increase scale for better resolution
-        backgroundColor: getComputedStyle(document.body).getPropertyValue('--background').trim() || '#E3F2FD' // Use theme background
+        backgroundColor: '#E3F2FD' // Use the explicit hex color from the theme (equivalent to --background)
       });
       const image = canvas.toDataURL('image/png', 1.0);
       const link = document.createElement('a');
@@ -323,23 +333,27 @@ export function useSchedule() {
   };
 
   const exportAsPdf = () => {
+    // Placeholder for actual PDF export functionality
     toast({ title: "Export as PDF", description: "This feature is not yet implemented. You can use your browser's Print to PDF function." });
-    // Placeholder for future PDF export functionality
   };
   
   const sortedTimeSlots = data.timeSlots ? [...data.timeSlots].sort((a, b) => a.startTime.localeCompare(b.startTime)) : [];
   const customDayOrder = data.settings?.customDayOrder || INITIAL_SCHEDULE_DATA.settings.customDayOrder;
   const daySettings = data.daySettings || INITIAL_SCHEDULE_DATA.daySettings;
-  const activeDays = customDayOrder.filter(dayName => daySettings.find(ds => ds.name === dayName)?.isActive);
+
+  // Filter active days based on the custom order
+  const activeDays = customDayOrder.filter(dayName => 
+    daySettings.find(ds => ds.name === dayName)?.isActive
+  );
 
   return {
     isLoaded,
     subjects: data.subjects || [],
     timeSlots: sortedTimeSlots,
-    daySettings: daySettings,
+    daySettings: daySettings, // Provide all day settings for modals etc.
     scheduledItems: data.scheduledItems || [],
-    customDayOrder: customDayOrder,
-    activeDays,
+    customDayOrder: customDayOrder, // This is the ordered list of day names
+    activeDays: activeDays, // This is the ordered list of *active* day names for rendering columns
     copiedItem,
     actions: {
       addSubject,
@@ -362,3 +376,4 @@ export function useSchedule() {
     },
   };
 }
+
