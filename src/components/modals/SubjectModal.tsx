@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect } from 'react';
@@ -78,7 +79,7 @@ export function SubjectModal({ isOpen, onClose, subjects, addSubject, updateSubj
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if(!open) { onClose(); handleCancelEdit(); } }}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[600px] max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{editingSubject ? 'Edit Subject' : 'Manage Subjects'}</DialogTitle>
           <DialogDescription>
