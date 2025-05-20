@@ -1,18 +1,13 @@
+
 "use client";
 
 import { useCallback, useEffect, useState } from 'react';
 import type { DropResult } from 'react-beautiful-dnd';
-import { v4 as uuidv4 } from 'uuid'; // Needs: npm install uuid && npm install --save-dev @types/uuid
+import { v4 as uuidv4 } from 'uuid';
 import useLocalStorage from './useLocalStorage';
 import type { ScheduleData, Subject, TimeSlot, DaySetting, ScheduledItem, DayOfWeek } from '@/lib/types';
 import { INITIAL_SCHEDULE_DATA, LOCAL_STORAGE_KEY } from '@/lib/config';
 import { useToast } from '@/hooks/use-toast';
-
-// Ensure uuid is installed: npm install uuid @types/uuid
-// If not, replace uuidv4() with a simpler unique ID generator for now.
-// For simplicity, a basic ID generator if uuid is not available:
-// const generateId = () => Math.random().toString(36).substr(2, 9);
-
 
 export function useSchedule() {
   const [data, setData] = useLocalStorage<ScheduleData>(LOCAL_STORAGE_KEY, INITIAL_SCHEDULE_DATA);
@@ -20,16 +15,32 @@ export function useSchedule() {
   const { toast } = useToast();
 
   useEffect(() => {
-    // This ensures that the hook uses the data from localStorage after initial mount
-    // and helps avoid hydration issues with server-rendered initial state vs client localStorage state.
     setIsLoaded(true); 
   }, []);
   
   const updateData = useCallback((newData: Partial<ScheduleData> | ((prev: ScheduleData) => ScheduleData)) => {
     if (typeof newData === 'function') {
-      setData(prev => ({ ...prev, ...newData(prev) }));
+      setData(prevData => {
+        const updated = newData(prevData);
+        // Ensure customDayOrder is always present in settings
+        if (updated.settings && !updated.settings.customDayOrder) {
+          updated.settings.customDayOrder = prevData.settings?.customDayOrder || INITIAL_SCHEDULE_DATA.settings.customDayOrder;
+        } else if (!updated.settings) {
+          updated.settings = { customDayOrder: prevData.settings?.customDayOrder || INITIAL_SCHEDULE_DATA.settings.customDayOrder };
+        }
+        return { ...prevData, ...updated };
+      });
     } else {
-      setData(prev => ({ ...prev, ...newData }));
+      setData(prevData => {
+        const updated = { ...prevData, ...newData };
+         // Ensure customDayOrder is always present in settings
+        if (updated.settings && !updated.settings.customDayOrder) {
+          updated.settings.customDayOrder = prevData.settings?.customDayOrder || INITIAL_SCHEDULE_DATA.settings.customDayOrder;
+        } else if (!updated.settings) {
+          updated.settings = { customDayOrder: prevData.settings?.customDayOrder || INITIAL_SCHEDULE_DATA.settings.customDayOrder };
+        }
+        return updated;
+      });
     }
   }, [setData]);
 
@@ -52,14 +63,13 @@ export function useSchedule() {
     updateData(prev => ({
       ...prev,
       subjects: prev.subjects.filter(s => s.id !== subjectId),
-      scheduledItems: prev.scheduledItems.filter(si => si.subjectId !== subjectId), // Also remove from schedule
+      scheduledItems: prev.scheduledItems.filter(si => si.subjectId !== subjectId),
     }));
     toast({ title: "Subject Deleted", description: "Subject and its scheduled occurrences have been removed." });
   };
 
   // Time Slot Management
   const addTimeSlot = (timeSlot: Omit<TimeSlot, 'id'>) => {
-    // Basic overlap validation (can be more sophisticated)
     const overlaps = data.timeSlots.some(ts => 
       (timeSlot.startTime < ts.endTime && timeSlot.endTime > ts.startTime)
     );
@@ -84,14 +94,14 @@ export function useSchedule() {
     updateData(prev => ({
       ...prev,
       timeSlots: prev.timeSlots.filter(ts => ts.id !== timeSlotId),
-      scheduledItems: prev.scheduledItems.filter(si => si.timeSlotId !== timeSlotId), // Also remove from schedule
+      scheduledItems: prev.scheduledItems.filter(si => si.timeSlotId !== timeSlotId),
     }));
     toast({ title: "Time Slot Deleted", description: "Time slot and its scheduled items have been removed." });
   };
   
   // Day Settings Management
   const updateDaySettings = (updatedDaySettings: DaySetting[]) => {
-    updateData({ daySettings: updatedDaySettings });
+    updateData(prev => ({ ...prev, daySettings: updatedDaySettings }));
   };
 
   const updateCustomDayOrder = (newOrder: DayOfWeek[]) => {
@@ -100,7 +110,6 @@ export function useSchedule() {
 
   // Scheduled Item Management
   const addScheduledItem = (item: Omit<ScheduledItem, 'id'>) => {
-    // Check if slot is already occupied
     const isOccupied = data.scheduledItems.some(si => si.day === item.day && si.timeSlotId === item.timeSlotId);
     if (isOccupied) {
       toast({ variant: "destructive", title: "Slot Occupied", description: "This time slot is already taken." });
@@ -108,54 +117,91 @@ export function useSchedule() {
     }
     const newScheduledItem = { ...item, id: uuidv4() };
     updateData(prev => ({ ...prev, scheduledItems: [...prev.scheduledItems, newScheduledItem] }));
+    const subject = data.subjects.find(s => s.id === item.subjectId);
+    toast({ title: "Item Scheduled", description: `${subject?.name || 'Subject'} scheduled for ${item.day} at ${data.timeSlots.find(ts=>ts.id === item.timeSlotId)?.startTime}.`});
     return newScheduledItem;
   };
   
   const deleteScheduledItem = (itemId: string) => {
+    const itemToDelete = data.scheduledItems.find(si => si.id === itemId);
+    if (!itemToDelete) return;
+    const subject = data.subjects.find(s => s.id === itemToDelete.subjectId);
     updateData(prev => ({
       ...prev,
       scheduledItems: prev.scheduledItems.filter(si => si.id !== itemId),
     }));
-    toast({ title: "Item Removed", description: "Scheduled item removed." });
+    toast({ title: "Item Removed", description: `${subject?.name || 'Item'} on ${itemToDelete.day} removed from schedule.` });
   };
 
   const handleDragEnd = (result: DropResult) => {
     const { source, destination, draggableId } = result;
 
-    if (!destination) return;
+    if (!destination) return; 
 
-    const sourceIsBank = source.droppableId === 'subject-bank';
-    const [type, day, timeSlotId] = destination.droppableId.split('-'); // e.g., "cell-Monday-slot1"
+    const sourceDroppableId = source.droppableId;
+    const destinationDroppableId = destination.droppableId;
+
+    if (sourceDroppableId === destinationDroppableId && source.index === destination.index) {
+      return; 
+    }
+
+    const isSourceBank = sourceDroppableId === 'subject-bank';
     
-    if (sourceIsBank && type === 'cell') { // Dragging from bank to schedule
-      const subjectId = draggableId.replace('bank-subject-', '');
-      addScheduledItem({ subjectId, day: day as DayOfWeek, timeSlotId });
-    } else if (!sourceIsBank && type === 'cell') { // Moving within schedule
-      const itemIdToMove = draggableId.replace('scheduled-item-', '');
-      const currentItem = data.scheduledItems.find(si => si.id === itemIdToMove);
-      if (!currentItem) return;
+    if (destinationDroppableId.startsWith('cell-')) {
+      const [, destDayStr, destTimeSlotId] = destinationDroppableId.split('-');
+      const destDay = destDayStr as DayOfWeek;
 
-      // Check if destination is occupied by another item (excluding itself)
-      const isDestinationOccupied = data.scheduledItems.some(
-        si => si.id !== itemIdToMove && si.day === (day as DayOfWeek) && si.timeSlotId === timeSlotId
-      );
-
-      if (isDestinationOccupied) {
-        toast({ variant: "destructive", title: "Slot Occupied", description: "Cannot move to an occupied slot." });
+      const targetTimeSlot = data.timeSlots.find(ts => ts.id === destTimeSlotId);
+      if (targetTimeSlot?.isBreak) {
+        toast({ variant: "destructive", title: "Operation Failed", description: "Cannot place items in a break slot." });
         return;
       }
-      
-      updateData(prev => ({
-        ...prev,
-        scheduledItems: prev.scheduledItems.map(si => 
-          si.id === itemIdToMove ? { ...si, day: day as DayOfWeek, timeSlotId } : si
-        ),
-      }));
-    } else if (!sourceIsBank && destination.droppableId === 'subject-bank-delete-zone') { // Dragging from schedule to delete zone (simulated)
+
+      if (isSourceBank) { 
+        const subjectId = draggableId.replace('bank-subject-', '');
+        addScheduledItem({ subjectId, day: destDay, timeSlotId: destTimeSlotId }); 
+      } else { 
+        const itemIdToMove = draggableId.replace('scheduled-item-', '');
+        const itemToMoveDetails = data.scheduledItems.find(si => si.id === itemIdToMove);
+
+        if (!itemToMoveDetails) return; 
+
+        const occupyingItem = data.scheduledItems.find(
+          si => si.day === destDay && si.timeSlotId === destTimeSlotId
+        );
+
+        if (occupyingItem) { 
+          if (occupyingItem.id === itemIdToMove) return; 
+
+          updateData(prev => ({
+            ...prev,
+            scheduledItems: prev.scheduledItems.map(si => {
+              if (si.id === itemIdToMove) {
+                return { ...si, day: destDay, timeSlotId: destTimeSlotId };
+              }
+              if (si.id === occupyingItem.id) {
+                return { ...si, day: itemToMoveDetails.day, timeSlotId: itemToMoveDetails.timeSlotId };
+              }
+              return si;
+            }),
+          }));
+          toast({ title: "Items Swapped", description: "Scheduled items have been swapped." });
+        } else { 
+          updateData(prev => ({
+            ...prev,
+            scheduledItems: prev.scheduledItems.map(si =>
+              si.id === itemIdToMove ? { ...si, day: destDay, timeSlotId: destTimeSlotId } : si
+            ),
+          }));
+          toast({ title: "Item Moved", description: "Scheduled item moved to new slot." });
+        }
+      }
+    } else if (destinationDroppableId === 'subject-bank-delete-zone') { 
+      if (!isSourceBank) { 
         const itemIdToDelete = draggableId.replace('scheduled-item-', '');
-        deleteScheduledItem(itemIdToDelete);
+        deleteScheduledItem(itemIdToDelete); 
+      }
     }
-    // Potentially handle reordering days in DaySettingsModal if using dnd there too
   };
 
   // Export/Import
@@ -187,32 +233,46 @@ export function useSchedule() {
       try {
         const jsonString = e.target?.result as string;
         const importedData = JSON.parse(jsonString) as ScheduleData;
-        // TODO: Add validation for importedData structure using Zod or similar
+        // Basic validation: Check for essential keys
+        if (
+          typeof importedData.subjects === 'undefined' ||
+          typeof importedData.timeSlots === 'undefined' ||
+          typeof importedData.daySettings === 'undefined' ||
+          typeof importedData.scheduledItems === 'undefined' ||
+          typeof importedData.settings?.customDayOrder === 'undefined'
+        ) {
+          throw new Error("Invalid data structure: Missing essential properties.");
+        }
+        // Further validation with Zod would be ideal here
         setData(importedData);
         toast({ title: "Data Imported", description: "Your schedule has been imported successfully." });
       } catch (error) {
-        toast({ variant: "destructive", title: "Import Error", description: "Invalid file or data format." });
+        const errorMessage = error instanceof Error ? error.message : "Invalid file or data format.";
+        toast({ variant: "destructive", title: "Import Error", description: errorMessage });
         console.error("Import error:", error);
       }
     };
     reader.readAsText(file);
-    event.target.value = ''; // Reset file input
+    if (event.target) { // Ensure event.target is not null
+        event.target.value = ''; 
+    }
   };
   
-  // Provide sorted time slots for rendering
-  const sortedTimeSlots = [...data.timeSlots].sort((a, b) => a.startTime.localeCompare(b.startTime));
-  const activeDays = data.settings.customDayOrder.filter(dayName => data.daySettings.find(ds => ds.name === dayName)?.isActive);
+  const sortedTimeSlots = data.timeSlots ? [...data.timeSlots].sort((a, b) => a.startTime.localeCompare(b.startTime)) : [];
+  const customDayOrder = data.settings?.customDayOrder || INITIAL_SCHEDULE_DATA.settings.customDayOrder;
+  const daySettings = data.daySettings || INITIAL_SCHEDULE_DATA.daySettings;
+  const activeDays = customDayOrder.filter(dayName => daySettings.find(ds => ds.name === dayName)?.isActive);
 
 
   return {
     isLoaded,
-    data,
-    subjects: data.subjects,
+    // Ensure all parts of data are available even if localStorage is empty or corrupted initially
+    subjects: data.subjects || [],
     timeSlots: sortedTimeSlots,
-    daySettings: data.daySettings,
-    scheduledItems: data.scheduledItems,
-    customDayOrder: data.settings.customDayOrder,
-    activeDays,
+    daySettings: daySettings,
+    scheduledItems: data.scheduledItems || [],
+    customDayOrder: customDayOrder,
+    activeDays, // This will be an empty array if customDayOrder or daySettings are not loaded
     actions: {
       addSubject,
       updateSubject,
@@ -230,3 +290,4 @@ export function useSchedule() {
     },
   };
 }
+
