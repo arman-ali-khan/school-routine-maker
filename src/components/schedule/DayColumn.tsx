@@ -5,15 +5,28 @@ import type { DayOfWeek, TimeSlot, ScheduledItem, Subject, DaySetting } from '@/
 import { TimeSlotCell } from './TimeSlotCell';
 
 interface DayColumnProps {
-  day: DaySetting; // Includes name, isActive, isWorkingDay
+  day: DaySetting; 
   timeSlots: TimeSlot[];
   scheduledItems: ScheduledItem[];
   subjects: Subject[];
   onDeleteItem: (itemId: string) => void;
   addScheduledItem: (item: Omit<ScheduledItem, 'id'>) => ScheduledItem | null;
+  copiedItem: ScheduledItem | null;
+  onCopyItem: (item: ScheduledItem) => void;
+  onPasteItem: (day: DayOfWeek, timeSlotId: string) => void;
 }
 
-export function DayColumn({ day, timeSlots, scheduledItems, subjects, onDeleteItem, addScheduledItem }: DayColumnProps) {
+export function DayColumn({ 
+  day, 
+  timeSlots, 
+  scheduledItems, 
+  subjects, 
+  onDeleteItem, 
+  addScheduledItem,
+  copiedItem,
+  onCopyItem,
+  onPasteItem 
+}: DayColumnProps) {
   if (!day.isActive) return null;
 
   return (
@@ -31,9 +44,14 @@ export function DayColumn({ day, timeSlots, scheduledItems, subjects, onDeleteIt
             subjects={subjects}
             onDeleteItem={onDeleteItem}
             addScheduledItem={addScheduledItem}
+            copiedItem={copiedItem}
+            onCopyItem={onCopyItem}
+            onPasteItem={onPasteItem}
           />
         ))}
       </div>
     </div>
   );
 }
+
+    

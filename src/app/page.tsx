@@ -22,7 +22,7 @@ export default function HomePage() {
     daySettings,
     scheduledItems,
     customDayOrder,
-    activeDays,
+    copiedItem, // Get copiedItem state
     actions,
   } = useSchedule();
 
@@ -92,6 +92,9 @@ export default function HomePage() {
                 subjects={subjects}
                 onDeleteItem={actions.deleteScheduledItem}
                 addScheduledItem={actions.addScheduledItem}
+                copiedItem={copiedItem} // Pass copiedItem
+                onCopyItem={actions.handleCopyItem} // Pass copy action
+                onPasteItem={actions.handlePasteItem} // Pass paste action
               />
             </section>
           </main>
@@ -126,3 +129,5 @@ export default function HomePage() {
     </ClientOnly>
   );
 }
+
+    

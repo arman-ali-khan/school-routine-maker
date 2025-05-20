@@ -13,6 +13,9 @@ interface ScheduleViewProps {
   subjects: Subject[];
   onDeleteItem: (itemId: string) => void;
   addScheduledItem: (item: Omit<ScheduledItem, 'id'>) => ScheduledItem | null;
+  copiedItem: ScheduledItem | null;
+  onCopyItem: (item: ScheduledItem) => void;
+  onPasteItem: (day: DayOfWeek, timeSlotId: string) => void;
 }
 
 export function ScheduleView({ 
@@ -22,7 +25,10 @@ export function ScheduleView({
   scheduledItems, 
   subjects, 
   onDeleteItem,
-  addScheduledItem 
+  addScheduledItem,
+  copiedItem,
+  onCopyItem,
+  onPasteItem,
 }: ScheduleViewProps) {
   
   const orderedDays = customDayOrder
@@ -65,6 +71,9 @@ export function ScheduleView({
               subjects={subjects}
               onDeleteItem={onDeleteItem}
               addScheduledItem={addScheduledItem}
+              copiedItem={copiedItem}
+              onCopyItem={onCopyItem}
+              onPasteItem={onPasteItem}
             />
           ))}
         </div>
@@ -72,3 +81,5 @@ export function ScheduleView({
     </div>
   );
 }
+
+    

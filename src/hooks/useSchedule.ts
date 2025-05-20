@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 export function useSchedule() {
   const [data, setData] = useLocalStorage<ScheduleData>(LOCAL_STORAGE_KEY, INITIAL_SCHEDULE_DATA);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [copiedItem, setCopiedItem] = useState<ScheduledItem | null>(null); // For copy/paste
   const { toast } = useToast();
 
   useEffect(() => {
@@ -135,12 +136,11 @@ export function useSchedule() {
   const handleDragEnd = (result: DropResult) => {
     const { source, destination, draggableId } = result;
 
-    if (!destination) return; // Dropped outside of a valid droppable
+    if (!destination) return;
 
     const sourceDroppableId = source.droppableId;
     const destinationDroppableId = destination.droppableId;
 
-    // If dropped on the same spot, do nothing
     if (sourceDroppableId === destinationDroppableId && source.index === destination.index) {
       return;
     }
@@ -148,67 +148,52 @@ export function useSchedule() {
     const isSourceBank = sourceDroppableId === 'subject-bank';
     const isDestDeleteZone = destinationDroppableId === 'subject-bank-delete-zone';
 
-    // --- Scenario 1: Dragging from a schedule cell to the delete zone ---
     if (!isSourceBank && isDestDeleteZone) {
       const itemIdToDelete = draggableId.replace('scheduled-item-', '');
-      deleteScheduledItem(itemIdToDelete); // Toast is handled inside this function
+      deleteScheduledItem(itemIdToDelete);
       return;
     }
 
-    // --- Scenario 2: Dragging to a schedule cell ('cell-day-timeslotId') ---
     if (destinationDroppableId.startsWith('cell-')) {
       const [, destDayStr, destTimeSlotId] = destinationDroppableId.split('-');
       const destDay = destDayStr as DayOfWeek;
-
-      // Check if the target cell is a break slot
       const targetTimeSlot = data.timeSlots.find(ts => ts.id === destTimeSlotId);
+
       if (targetTimeSlot?.isBreak) {
         toast({ variant: "destructive", title: "Operation Failed", description: "Cannot place items in a break slot." });
         return;
       }
+      
+      const existingItemInDest = data.scheduledItems.find(si => si.day === destDay && si.timeSlotId === destTimeSlotId);
 
-      // Sub-Scenario 2.1: Dragging from the Subject Bank to a schedule cell
       if (isSourceBank) {
         const subjectId = draggableId.replace('bank-subject-', '');
-        // Check if the destination cell is already occupied
-        const existingItemInDest = data.scheduledItems.find(si => si.day === destDay && si.timeSlotId === destTimeSlotId);
         if (existingItemInDest) {
           toast({ variant: "destructive", title: "Slot Occupied", description: "This time slot is already taken. Drag from bank to an empty slot." });
           return;
         }
-        // Add the new item
-        addScheduledItem({ subjectId, day: destDay, timeSlotId: destTimeSlotId }); // Toast handled inside
+        addScheduledItem({ subjectId, day: destDay, timeSlotId: destTimeSlotId });
         return;
       }
       
-      // Sub-Scenario 2.2: Dragging from one schedule cell to another (move or swap)
-      // Source is not the bank, and destination is a cell
       if (!isSourceBank) {
         const itemIdToMove = draggableId.replace('scheduled-item-', '');
         const itemToMoveDetails = data.scheduledItems.find(si => si.id === itemIdToMove);
 
         if (!itemToMoveDetails) {
-          console.error("Item to move not found:", itemIdToMove); // Should not happen if IDs are correct
           toast({ variant: "destructive", title: "Drag Error", description: "Could not find the item to move." });
-          return; 
+          return;
         }
 
-        const occupyingItemInDest = data.scheduledItems.find(
-          si => si.day === destDay && si.timeSlotId === destTimeSlotId
-        );
-
-        if (occupyingItemInDest) {
-          // If dragging onto itself (which shouldn't happen if source/dest check above is solid, but as a safeguard)
-          if (occupyingItemInDest.id === itemIdToMove) return;
-
-          // Swap items: update dragged item's position and the occupying item's position
+        if (existingItemInDest) {
+          if (existingItemInDest.id === itemIdToMove) return;
           updateData(prev => ({
             ...prev,
             scheduledItems: prev.scheduledItems.map(si => {
-              if (si.id === itemIdToMove) { // This is the item being dragged
+              if (si.id === itemIdToMove) {
                 return { ...si, day: destDay, timeSlotId: destTimeSlotId };
               }
-              if (si.id === occupyingItemInDest.id) { // This is the item being displaced
+              if (si.id === existingItemInDest.id) {
                 return { ...si, day: itemToMoveDetails.day, timeSlotId: itemToMoveDetails.timeSlotId };
               }
               return si;
@@ -216,7 +201,6 @@ export function useSchedule() {
           }));
           toast({ title: "Items Swapped", description: "Scheduled items have been swapped." });
         } else {
-          // Destination is empty, just move the item
           updateData(prev => ({
             ...prev,
             scheduledItems: prev.scheduledItems.map(si =>
@@ -228,9 +212,40 @@ export function useSchedule() {
         return;
       }
     }
-    // If execution reaches here, it's an unhandled or invalid drop (e.g., bank to bank, bank to non-delete-zone outside cells)
-    // No action needed for these cases by default.
   };
+
+  const handleCopyItem = (itemToCopy: ScheduledItem) => {
+    setCopiedItem(itemToCopy);
+    const subject = data.subjects.find(s => s.id === itemToCopy.subjectId);
+    toast({ title: "Item Copied", description: `${subject?.name || 'Item'} on ${itemToCopy.day} copied to clipboard.` });
+  };
+
+  const handlePasteItem = (targetDay: DayOfWeek, targetTimeSlotId: string) => {
+    if (!copiedItem) {
+      toast({ variant: "destructive", title: "Paste Error", description: "No item copied to paste." });
+      return;
+    }
+
+    const targetTimeSlot = data.timeSlots.find(ts => ts.id === targetTimeSlotId);
+    if (targetTimeSlot?.isBreak) {
+      toast({ variant: "destructive", title: "Paste Error", description: "Cannot paste into a break slot." });
+      return;
+    }
+
+    const isTargetOccupied = data.scheduledItems.some(si => si.day === targetDay && si.timeSlotId === targetTimeSlotId);
+    if (isTargetOccupied) {
+      toast({ variant: "destructive", title: "Paste Error", description: "Target slot is already occupied." });
+      return;
+    }
+
+    addScheduledItem({
+      subjectId: copiedItem.subjectId,
+      day: targetDay,
+      timeSlotId: targetTimeSlotId,
+    });
+    // Toast for successful paste is handled within addScheduledItem
+  };
+
 
   // Export/Import
   const exportData = () => {
@@ -271,7 +286,6 @@ export function useSchedule() {
         ) {
           throw new Error("Invalid data structure: Missing essential properties.");
         }
-        // TODO: Consider more granular validation (e.g., with Zod) if time permits
         setData(importedData);
         toast({ title: "Data Imported", description: "Your schedule has been imported successfully." });
       } catch (error) {
@@ -301,6 +315,7 @@ export function useSchedule() {
     scheduledItems: data.scheduledItems || [],
     customDayOrder: customDayOrder,
     activeDays,
+    copiedItem, // Expose copied item state
     actions: {
       addSubject,
       updateSubject,
@@ -315,6 +330,10 @@ export function useSchedule() {
       handleDragEnd,
       exportData,
       importData,
+      handleCopyItem, // Expose copy action
+      handlePasteItem, // Expose paste action
     },
   };
 }
+
+    
