@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useEffect } from 'react';
-import { useForm, type SubmitHandler } from 'react-hook-form';
+import { useForm, type SubmitHandler, useWatch } from 'react-hook-form'; // Added useWatch
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
@@ -43,9 +43,16 @@ interface SubjectModalProps {
 export function SubjectModal({ isOpen, onClose, subjects, addSubject, updateSubject, deleteSubject }: SubjectModalProps) {
   const [editingSubject, setEditingSubject] = React.useState<Subject | null>(null);
   
-  const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm<SubjectFormData>({
+  const { control, register, handleSubmit, reset, setValue, formState: { errors } } = useForm<SubjectFormData>({
     resolver: zodResolver(subjectSchema),
     defaultValues: { color: '#64B5F6' } // Default color
+  });
+
+  // Watch the color field to ensure re-renders propagate the value
+  const watchedColor = useWatch({
+    control,
+    name: 'color',
+    defaultValue: '#64B5F6' // Keep consistent with useForm defaultValues
   });
 
   useEffect(() => {
@@ -104,21 +111,25 @@ export function SubjectModal({ isOpen, onClose, subjects, addSubject, updateSubj
             <Input id="code" {...register('code')} />
           </div>
           <div>
-            <Label htmlFor="color">Color</Label>
+            <Label htmlFor="color-text-input">Color</Label> {/* Label points to the text input for accessibility */}
             <div className="flex items-center gap-2">
-              {/* Use a raw HTML input for color picker to avoid styling conflicts */}
               <input
-                id="color-picker" // Different ID for the picker itself if Label points to text input
+                id="color-picker-swatch" 
                 type="color"
-                {...register('color')}
+                value={watchedColor} // Display value from RHF state
+                onChange={(e) => {
+                  const newColor = e.target.value.toUpperCase();
+                  setValue('color', newColor, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+                }}
                 className={cn(
-                  "w-12 h-10 rounded-md border border-input bg-background p-0", // p-0 is important
+                  "w-12 h-10 rounded-md border border-input bg-background p-0", 
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 )}
+                aria-label="Color swatch"
               />
               <Input 
-                id="color" // Label should point to this for accessibility if it describes the hex code
-                {...register('color')} 
+                id="color-text-input" 
+                {...register('color')} // Registered with RHF, value controlled by RHF
                 placeholder="#RRGGBB" 
                 className="flex-1" 
                 aria-label="Color hex code"
