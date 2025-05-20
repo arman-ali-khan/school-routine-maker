@@ -71,7 +71,12 @@ export function SubjectBank({ subjects }: SubjectBankProps) {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <Droppable droppableId="subject-bank" isDropDisabled={true} isCombineEnabled={false}>
+        <Droppable 
+          droppableId="subject-bank" 
+          isDropDisabled={true} 
+          isCombineEnabled={false}
+          ignoreContainerClipping={false}
+        >
           {(provided, snapshot) => (
             <ScrollArea 
               className="h-[calc(100vh-250px)] pr-3" // Adjust height as needed
@@ -95,7 +100,11 @@ export function SubjectBank({ subjects }: SubjectBankProps) {
           )}
         </Droppable>
          {/* A droppable zone for deleting items dragged from the schedule */}
-        <Droppable droppableId="subject-bank-delete-zone" isCombineEnabled={false}>
+        <Droppable 
+          droppableId="subject-bank-delete-zone" 
+          isCombineEnabled={false}
+          ignoreContainerClipping={false}
+        >
           {(provided, snapshot) => (
             <div
               ref={provided.innerRef}
@@ -115,4 +124,3 @@ export function SubjectBank({ subjects }: SubjectBankProps) {
     </Card>
   );
 }
-
