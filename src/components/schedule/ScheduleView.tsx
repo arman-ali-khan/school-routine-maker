@@ -32,12 +32,15 @@ export const ScheduleView = React.forwardRef<HTMLDivElement, ScheduleViewProps>(
   onPasteItem,
 }, ref) => {
   
-  const orderedDays = customDayOrder
-    .map(dayName => daySettings.find(ds => ds.name === dayName))
-    .filter(ds => ds !== undefined) as DaySetting[];
+  // Map all days from customDayOrder to their corresponding DaySetting.
+  // Reconciliation in useSchedule ensures daySettings contains entries for all valid days.
+  const orderedDays: DaySetting[] = customDayOrder.map(dayName => {
+    const setting = daySettings.find(ds => ds.name === dayName);
+    // Fallback in case of unexpected inconsistency, though useSchedule should prevent this.
+    // This ensures DayColumn always receives a valid DaySetting object.
+    return setting || { name: dayName, isActive: false };
+  });
   
-  // Check if there are any days configured to be active at all, or if there are time slots.
-  // This is to decide whether to show the "Please configure" message.
   const hasAnyActiveDays = orderedDays.some(day => day.isActive);
 
   if (!hasAnyActiveDays || !timeSlots.length) {
@@ -87,3 +90,4 @@ export const ScheduleView = React.forwardRef<HTMLDivElement, ScheduleViewProps>(
 });
 
 ScheduleView.displayName = "ScheduleView";
+
