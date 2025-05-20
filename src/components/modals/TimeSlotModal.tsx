@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useEffect, useMemo } from 'react';
@@ -15,11 +16,12 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Label } from '@/components/ui/label'; // Standard Label
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { TimeSlot } from '@/lib/types';
-import { Trash2, Edit3, PlusCircle } from 'lucide-react';
+import { Trash2, Edit3 } from 'lucide-react';
+import { FormField, FormItem, FormControl, FormLabel } from '@/components/ui/form'; // For controlled Checkbox
 
 const timeFormatRegex = /^(0[0-9]|1[0-9]|2[0-3]):([0-5][0-9])$/; // HH:MM format
 
@@ -115,12 +117,29 @@ export function TimeSlotModal({ isOpen, onClose, timeSlots, addTimeSlot, updateT
             </div>
           </div>
            {errors.root?.endTime && <p className="text-sm text-destructive">{errors.root.endTime.message}</p>}
-          <div className="flex items-center space-x-2">
-            <Checkbox id="isBreak" {...register('isBreak')} />
-            <Label htmlFor="isBreak" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-              Mark as Break
-            </Label>
-          </div>
+          
+          <FormField
+            control={control}
+            name="isBreak"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-center space-x-2 py-2">
+                <FormControl>
+                  <Checkbox
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                    id="isBreak"
+                  />
+                </FormControl>
+                <FormLabel 
+                  htmlFor="isBreak" 
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  Mark as Break
+                </FormLabel>
+              </FormItem>
+            )}
+          />
+
           <DialogFooter>
              {editingSlot && <Button type="button" variant="outline" onClick={handleCancelEdit}>Cancel Edit</Button>}
             <Button type="submit">{editingSlot ? 'Update Slot' : 'Add Slot'}</Button>
@@ -159,3 +178,4 @@ export function TimeSlotModal({ isOpen, onClose, timeSlots, addTimeSlot, updateT
     </Dialog>
   );
 }
+
