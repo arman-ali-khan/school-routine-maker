@@ -19,7 +19,11 @@ export function TimeSlotCell({ day, timeSlot, scheduledItems, subjects, onDelete
   const subjectDetails = itemInSlot ? subjects.find(s => s.id === itemInSlot.subjectId) : undefined;
 
   return (
-    <Droppable droppableId={`cell-${day}-${timeSlot.id}`} type="SCHEDULED_ITEM">
+    <Droppable 
+      droppableId={`cell-${day}-${timeSlot.id}`} 
+      type="SCHEDULED_ITEM"
+      isDropDisabled={false} // Explicitly set to false
+    >
       {(provided, snapshot) => (
         <div
           ref={provided.innerRef}
