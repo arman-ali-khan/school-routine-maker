@@ -43,7 +43,7 @@ export const INITIAL_SCHEDULE_DATA: ScheduleData = {
   scheduledItems: [],
   settings: {
     // customDayOrder is derived directly from the defined DAYS_OF_WEEK array.
-    customDayOrder: [...DAYS_OF_WEEK], 
+    customDayOrder: [...DAYS_OF_WEEK],
   },
 };
 
