@@ -37,16 +37,15 @@ export function DaySettingsModal({
   updateDaySettings, 
   updateCustomDayOrder 
 }: DaySettingsModalProps) {
-  const [currentDaySettings, setCurrentDaySettings] = useState<DaySetting[]>(initialDaySettings);
-  const [currentDayOrder, setCurrentDayOrder] = useState<DayOfWeek[]>(initialCustomDayOrder);
+  const [currentDaySettings, setCurrentDaySettings] = useState<DaySetting[]>([]);
+  const [currentDayOrder, setCurrentDayOrder] = useState<DayOfWeek[]>([]);
 
   useEffect(() => {
-    setCurrentDaySettings(initialDaySettings);
-  }, [initialDaySettings]);
-
-  useEffect(() => {
-    setCurrentDayOrder(initialCustomDayOrder);
-  }, [initialCustomDayOrder]);
+    if (isOpen) { // Only reset when modal opens or critical props change
+      setCurrentDaySettings(JSON.parse(JSON.stringify(initialDaySettings))); // Deep copy
+      setCurrentDayOrder([...initialCustomDayOrder]); // Shallow copy is fine for array of strings
+    }
+  }, [isOpen, initialDaySettings, initialCustomDayOrder]);
 
 
   const handleToggleActive = (dayName: DayOfWeek) => {
@@ -84,7 +83,7 @@ export function DaySettingsModal({
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={(open) => {if (!open) onClose();}}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Manage Days</DialogTitle>
@@ -163,3 +162,4 @@ export function DaySettingsModal({
     </Dialog>
   );
 }
+

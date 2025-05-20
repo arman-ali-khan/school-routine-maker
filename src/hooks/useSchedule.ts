@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { DropResult } from 'react-beautiful-dnd';
 import { v4 as uuidv4 } from 'uuid';
 import useLocalStorage from './useLocalStorage';
-import type { ScheduleData, Subject, TimeSlot, DaySetting, ScheduledItem, DayOfWeek } from '@/lib/types';
+import type { ScheduleData, Subject, TimeSlot, DaySetting, DayOfWeek } from '@/lib/types';
 import { INITIAL_SCHEDULE_DATA, LOCAL_STORAGE_KEY } from '@/lib/config';
 import { useToast } from '@/hooks/use-toast';
 import html2canvas from 'html2canvas';
@@ -98,11 +98,14 @@ export function useSchedule() {
   };
   
   const updateDaySettings = (updatedDaySettings: DaySetting[]) => {
-    updateData(prev => ({ ...prev, daySettings: updatedDaySettings }));
+    // Explicitly spread to ensure a new array reference, promoting change detection.
+    updateData(prev => ({ ...prev, daySettings: [...updatedDaySettings] }));
+    toast({ title: "Day Settings Updated" });
   };
 
   const updateCustomDayOrder = (newOrder: DayOfWeek[]) => {
     updateData(prev => ({...prev, settings: { ...prev.settings, customDayOrder: newOrder }}));
+    // No separate toast needed if updateDaySettings already toasts, or add one if preferred.
   };
 
   const addScheduledItem = (item: Omit<ScheduledItem, 'id'>) => {
@@ -145,77 +148,56 @@ export function useSchedule() {
     const isSourceBank = sourceDroppableId === 'subject-bank';
     const isDestDeleteZone = destinationDroppableId === 'subject-bank-delete-zone';
 
-    // Case 1: Dragging from schedule to delete zone
     if (!isSourceBank && isDestDeleteZone) {
       const itemIdToDelete = draggableId.replace('scheduled-item-', '');
       deleteScheduledItem(itemIdToDelete);
-      // Toast for delete is handled within deleteScheduledItem
       return;
     }
 
-    // Case 2: Dragging to a schedule cell
     if (destinationDroppableId.startsWith('cell-')) {
       const [, destDayStr, destTimeSlotId] = destinationDroppableId.split('-');
       const destDay = destDayStr as DayOfWeek;
       const targetTimeSlot = data.timeSlots.find(ts => ts.id === destTimeSlotId);
 
-      // Prevent dropping into a break slot
       if (targetTimeSlot?.isBreak) {
         toast({ variant: "destructive", title: "Operation Failed", description: "Cannot place items in a break slot." });
         return;
       }
       
       const existingItemInDest = data.scheduledItems.find(si => si.day === destDay && si.timeSlotId === destTimeSlotId);
+      const subjectIdFromBank = isSourceBank ? draggableId.replace('bank-subject-', '') : null;
+      const movingItemId = !isSourceBank ? draggableId.replace('scheduled-item-', '') : null;
+      const movingItemDetails = movingItemId ? data.scheduledItems.find(si => si.id === movingItemId) : null;
 
-      // Subcase 2.1: Dragging from Subject Bank to an empty cell
-      if (isSourceBank) {
+      if (isSourceBank && subjectIdFromBank) { // Dragging from Bank
         if (existingItemInDest) {
-          toast({ variant: "destructive", title: "Slot Occupied", description: "This time slot is already taken. Drag from bank to an empty slot." });
+          toast({ variant: "destructive", title: "Slot Occupied", description: "Drag from bank to an empty slot or swap existing items." });
           return;
         }
-        const subjectId = draggableId.replace('bank-subject-', '');
-        addScheduledItem({ subjectId, day: destDay, timeSlotId: destTimeSlotId });
-        // Toast for successful add is handled within addScheduledItem
-        return;
-      }
-      
-      // Subcase 2.2: Dragging an item already on the schedule
-      if (!isSourceBank) { 
-        const itemIdToMove = draggableId.replace('scheduled-item-', '');
-        const itemToMoveDetails = data.scheduledItems.find(si => si.id === itemIdToMove);
-
-        if (!itemToMoveDetails) {
-          toast({ variant: "destructive", title: "Drag Error", description: "Could not find the item to move." });
-          return;
-        }
-
-        if (existingItemInDest) { // Destination is occupied, swap items
-          if (existingItemInDest.id === itemIdToMove) return; // Dragged to its own spot
-
+        addScheduledItem({ subjectId: subjectIdFromBank, day: destDay, timeSlotId: destTimeSlotId });
+      } else if (movingItemDetails) { // Dragging within Schedule
+        if (existingItemInDest) { // Destination is occupied, swap
+          if (existingItemInDest.id === movingItemDetails.id) return; // Dragged to its own spot
           updateData(prev => ({
             ...prev,
             scheduledItems: prev.scheduledItems.map(si => {
-              if (si.id === itemIdToMove) { // This is the item being dragged
-                return { ...si, day: destDay, timeSlotId: destTimeSlotId };
-              }
-              if (si.id === existingItemInDest.id) { // This is the item in the destination slot
-                return { ...si, day: itemToMoveDetails.day, timeSlotId: itemToMoveDetails.timeSlotId };
-              }
+              if (si.id === movingItemDetails.id) return { ...si, day: destDay, timeSlotId: destTimeSlotId };
+              if (si.id === existingItemInDest.id) return { ...si, day: movingItemDetails.day, timeSlotId: movingItemDetails.timeSlotId };
               return si;
             }),
           }));
-          toast({ title: "Items Swapped", description: "Scheduled items have been swapped." });
-        } else { // Destination is empty, move item
+          toast({ title: "Items Swapped" });
+        } else { // Destination is empty, move
           updateData(prev => ({
             ...prev,
             scheduledItems: prev.scheduledItems.map(si =>
-              si.id === itemIdToMove ? { ...si, day: destDay, timeSlotId: destTimeSlotId } : si
+              si.id === movingItemDetails.id ? { ...si, day: destDay, timeSlotId: destTimeSlotId } : si
             ),
           }));
-          toast({ title: "Item Moved", description: "Scheduled item moved to new slot." });
+          toast({ title: "Item Moved" });
         }
-        return;
       }
+      return;
     }
   };
 
@@ -248,7 +230,6 @@ export function useSchedule() {
       day: targetDay,
       timeSlotId: targetTimeSlotId,
     });
-    // Toast for successful paste is handled within addScheduledItem
   };
 
   const exportData = () => {
@@ -280,24 +261,22 @@ export function useSchedule() {
         const jsonString = e.target?.result as string;
         const importedData = JSON.parse(jsonString) as ScheduleData;
         
-        // Basic validation for key properties
         if (
           typeof importedData.subjects === 'undefined' ||
           typeof importedData.timeSlots === 'undefined' ||
           typeof importedData.daySettings === 'undefined' ||
           typeof importedData.scheduledItems === 'undefined' ||
-          typeof importedData.settings?.customDayOrder === 'undefined' // Check nested property
+          typeof importedData.settings?.customDayOrder === 'undefined'
         ) {
           throw new Error("Invalid data structure: Missing essential properties.");
         }
-        setData(importedData); // This will merge with defaults if some parts are missing due to the nature of useLocalStorage
+        setData(importedData); 
         toast({ title: "Data Imported", description: "Your schedule has been imported successfully." });
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : "Invalid file or data format.";
         toast({ variant: "destructive", title: "Import Error", description: errorMessage });
         console.error("Import error:", error);
       } finally {
-        // Reset file input to allow re-uploading the same file if needed
         if (event.target) { 
             event.target.value = ''; 
         }
@@ -315,8 +294,8 @@ export function useSchedule() {
       const canvas = await html2canvas(element, {
         logging: true,
         useCORS: true,
-        scale: 2, // Increase scale for better resolution
-        backgroundColor: '#E3F2FD' // Use the explicit hex color from the theme (equivalent to --background)
+        scale: 2, 
+        backgroundColor: '#E3F2FD' 
       });
       const image = canvas.toDataURL('image/png', 1.0);
       const link = document.createElement('a');
@@ -333,27 +312,25 @@ export function useSchedule() {
   };
 
   const exportAsPdf = () => {
-    // Placeholder for actual PDF export functionality
     toast({ title: "Export as PDF", description: "This feature is not yet implemented. You can use your browser's Print to PDF function." });
   };
   
   const sortedTimeSlots = data.timeSlots ? [...data.timeSlots].sort((a, b) => a.startTime.localeCompare(b.startTime)) : [];
   const customDayOrder = data.settings?.customDayOrder || INITIAL_SCHEDULE_DATA.settings.customDayOrder;
-  const daySettings = data.daySettings || INITIAL_SCHEDULE_DATA.daySettings;
+  const daySettingsFromData = data.daySettings || INITIAL_SCHEDULE_DATA.daySettings;
 
-  // Filter active days based on the custom order
   const activeDays = customDayOrder.filter(dayName => 
-    daySettings.find(ds => ds.name === dayName)?.isActive
+    daySettingsFromData.find(ds => ds.name === dayName)?.isActive
   );
 
   return {
     isLoaded,
     subjects: data.subjects || [],
     timeSlots: sortedTimeSlots,
-    daySettings: daySettings, // Provide all day settings for modals etc.
+    daySettings: daySettingsFromData,
     scheduledItems: data.scheduledItems || [],
-    customDayOrder: customDayOrder, // This is the ordered list of day names
-    activeDays: activeDays, // This is the ordered list of *active* day names for rendering columns
+    customDayOrder: customDayOrder,
+    activeDays: activeDays, 
     copiedItem,
     actions: {
       addSubject,
