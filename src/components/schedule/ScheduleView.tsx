@@ -19,7 +19,6 @@ interface ScheduleViewProps {
   onPasteItem: (day: DayOfWeek, timeSlotId: string) => void;
 }
 
-// Use React.forwardRef to allow passing a ref to this component
 export const ScheduleView = React.forwardRef<HTMLDivElement, ScheduleViewProps>(({ 
   daySettings, 
   customDayOrder, 
@@ -31,27 +30,27 @@ export const ScheduleView = React.forwardRef<HTMLDivElement, ScheduleViewProps>(
   copiedItem,
   onCopyItem,
   onPasteItem,
-}, ref) => { // ref is the second argument for forwardRef
+}, ref) => {
   
   const orderedDays = customDayOrder
     .map(dayName => daySettings.find(ds => ds.name === dayName))
     .filter(ds => ds !== undefined) as DaySetting[];
   
-  const activeOrderedDays = orderedDays.filter(day => day.isActive);
+  // Check if there are any days configured to be active at all, or if there are time slots.
+  // This is to decide whether to show the "Please configure" message.
+  const hasAnyActiveDays = orderedDays.some(day => day.isActive);
 
-  if (!activeOrderedDays.length || !timeSlots.length) {
+  if (!hasAnyActiveDays || !timeSlots.length) {
     return (
-      <div className="flex-1 p-4 text-center text-muted-foreground">
+      <div ref={ref} className="flex-1 p-4 text-center text-muted-foreground">
         Please configure active days and time slots in the settings.
       </div>
     );
   }
 
   return (
-    // Attach the forwarded ref to this main div
     <div ref={ref} className="flex flex-col flex-1 h-full overflow-hidden border rounded-md bg-card shadow">
       <div className="flex flex-1 h-full overflow-hidden">
-        {/* Time Slot Labels Column */}
         <div className="w-24 border-r sticky left-0 bg-background z-20">
           <div className="h-[49px] border-b p-2 text-center font-semibold shadow-sm sticky top-0 bg-background/80 backdrop-blur-sm">Time</div>
           {timeSlots.map(ts => (
@@ -63,13 +62,13 @@ export const ScheduleView = React.forwardRef<HTMLDivElement, ScheduleViewProps>(
           ))}
         </div>
 
-        {/* Schedule Grid */}
         <ScrollArea className="flex-1 h-full">
           <div className="flex min-w-max"> 
-            {activeOrderedDays.map(day => (
+            {/* Map over all orderedDays. DayColumn will hide itself if not active. */}
+            {orderedDays.map(day => (
               <DayColumn
                 key={day.name}
-                day={day}
+                day={day} // Pass the full DaySetting object
                 timeSlots={timeSlots}
                 scheduledItems={scheduledItems}
                 subjects={subjects}
@@ -87,4 +86,4 @@ export const ScheduleView = React.forwardRef<HTMLDivElement, ScheduleViewProps>(
   );
 });
 
-ScheduleView.displayName = "ScheduleView"; // Setting displayName for easier debugging
+ScheduleView.displayName = "ScheduleView";
