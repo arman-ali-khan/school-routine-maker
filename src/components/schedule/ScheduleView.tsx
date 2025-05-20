@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { DayOfWeek, TimeSlot, ScheduledItem, Subject, DaySetting } from '@/lib/types';
@@ -11,9 +12,18 @@ interface ScheduleViewProps {
   scheduledItems: ScheduledItem[];
   subjects: Subject[];
   onDeleteItem: (itemId: string) => void;
+  addScheduledItem: (item: Omit<ScheduledItem, 'id'>) => ScheduledItem | null;
 }
 
-export function ScheduleView({ daySettings, customDayOrder, timeSlots, scheduledItems, subjects, onDeleteItem }: ScheduleViewProps) {
+export function ScheduleView({ 
+  daySettings, 
+  customDayOrder, 
+  timeSlots, 
+  scheduledItems, 
+  subjects, 
+  onDeleteItem,
+  addScheduledItem 
+}: ScheduleViewProps) {
   
   const orderedDays = customDayOrder
     .map(dayName => daySettings.find(ds => ds.name === dayName))
@@ -54,6 +64,7 @@ export function ScheduleView({ daySettings, customDayOrder, timeSlots, scheduled
               scheduledItems={scheduledItems}
               subjects={subjects}
               onDeleteItem={onDeleteItem}
+              addScheduledItem={addScheduledItem}
             />
           ))}
         </div>

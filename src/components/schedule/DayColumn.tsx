@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { DayOfWeek, TimeSlot, ScheduledItem, Subject, DaySetting } from '@/lib/types';
@@ -9,9 +10,10 @@ interface DayColumnProps {
   scheduledItems: ScheduledItem[];
   subjects: Subject[];
   onDeleteItem: (itemId: string) => void;
+  addScheduledItem: (item: Omit<ScheduledItem, 'id'>) => ScheduledItem | null;
 }
 
-export function DayColumn({ day, timeSlots, scheduledItems, subjects, onDeleteItem }: DayColumnProps) {
+export function DayColumn({ day, timeSlots, scheduledItems, subjects, onDeleteItem, addScheduledItem }: DayColumnProps) {
   if (!day.isActive) return null;
 
   return (
@@ -28,6 +30,7 @@ export function DayColumn({ day, timeSlots, scheduledItems, subjects, onDeleteIt
             scheduledItems={scheduledItems}
             subjects={subjects}
             onDeleteItem={onDeleteItem}
+            addScheduledItem={addScheduledItem}
           />
         ))}
       </div>

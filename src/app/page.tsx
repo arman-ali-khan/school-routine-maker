@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useRef } from 'react';
@@ -90,6 +91,7 @@ export default function HomePage() {
                 scheduledItems={scheduledItems}
                 subjects={subjects}
                 onDeleteItem={actions.deleteScheduledItem}
+                addScheduledItem={actions.addScheduledItem}
               />
             </section>
           </main>
