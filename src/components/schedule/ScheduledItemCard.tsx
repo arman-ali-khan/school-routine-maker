@@ -79,8 +79,8 @@ export function ScheduledItemCard({ item, subject, timeSlot, index, onDelete, on
                   <TooltipTrigger asChild>
                     <div className="w-full h-full"> {/* Tooltip content area */}
                       <div>
-                        <p className="font-semibold truncate">{subject.name}</p>
-                        <p className="opacity-80 truncate">{subject.teacher}</p>
+                        <p className="font-semibold">{subject.name}</p>
+                        <p className="opacity-80">{subject.teacher}</p>
                         {subject.code && <p className="opacity-60 text-[0.65rem]">[{subject.code}]</p>}
                       </div>
                       <div className="mt-1 flex justify-end space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150" data-role="actions-container">
