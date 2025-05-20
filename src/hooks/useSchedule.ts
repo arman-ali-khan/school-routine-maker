@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { DropResult } from 'react-beautiful-dnd';
 import { v4 as uuidv4 } from 'uuid';
 import useLocalStorage from './useLocalStorage';
-import type { ScheduleData, Subject, TimeSlot, DaySetting, DayOfWeek } from '@/lib/types';
+import type { ScheduleData, Subject, TimeSlot, DaySetting, DayOfWeek, ScheduledItem } from '@/lib/types';
 import { INITIAL_SCHEDULE_DATA, LOCAL_STORAGE_KEY } from '@/lib/config';
 import { useToast } from '@/hooks/use-toast';
 import html2canvas from 'html2canvas';
@@ -17,31 +17,23 @@ export function useSchedule() {
   const { toast } = useToast();
 
   useEffect(() => {
-    setIsLoaded(true); 
+    setIsLoaded(true);
   }, []);
   
-  const updateData = useCallback((newData: Partial<ScheduleData> | ((prev: ScheduleData) => ScheduleData)) => {
-    if (typeof newData === 'function') {
-      setData(prevData => {
-        const updated = newData(prevData);
-        if (updated.settings && !updated.settings.customDayOrder) {
-          updated.settings.customDayOrder = prevData.settings?.customDayOrder || INITIAL_SCHEDULE_DATA.settings.customDayOrder;
-        } else if (!updated.settings) {
-          updated.settings = { customDayOrder: prevData.settings?.customDayOrder || INITIAL_SCHEDULE_DATA.settings.customDayOrder };
-        }
-        return { ...prevData, ...updated };
-      });
-    } else {
-      setData(prevData => {
-        const updated = { ...prevData, ...newData };
-        if (updated.settings && !updated.settings.customDayOrder) {
-          updated.settings.customDayOrder = prevData.settings?.customDayOrder || INITIAL_SCHEDULE_DATA.settings.customDayOrder;
-        } else if (!updated.settings) {
-          updated.settings = { customDayOrder: prevData.settings?.customDayOrder || INITIAL_SCHEDULE_DATA.settings.customDayOrder };
-        }
-        return updated;
-      });
-    }
+  // Generic update function, can be used by actions that don't need special handling
+  const updateData = useCallback((updater: (prev: ScheduleData) => ScheduleData) => {
+    setData(prevData => {
+      const updated = updater(prevData);
+      // Ensure settings and customDayOrder are preserved if not part of the direct update
+      if (!updated.settings) {
+        updated.settings = { 
+          customDayOrder: prevData.settings?.customDayOrder || INITIAL_SCHEDULE_DATA.settings.customDayOrder 
+        };
+      } else if (!updated.settings.customDayOrder) {
+        updated.settings.customDayOrder = prevData.settings?.customDayOrder || INITIAL_SCHEDULE_DATA.settings.customDayOrder;
+      }
+      return updated; // setData from useLocalStorage will handle this new object
+    });
   }, [setData]);
 
   const addSubject = (subject: Omit<Subject, 'id'>) => {
@@ -76,7 +68,10 @@ export function useSchedule() {
       return;
     }
     const newTimeSlot = { ...timeSlot, id: uuidv4() };
-    updateData(prev => ({ ...prev, timeSlots: [...prev.timeSlots, newTimeSlot].sort((a,b) => a.startTime.localeCompare(b.startTime)) }));
+    updateData(prev => ({ 
+      ...prev, 
+      timeSlots: [...prev.timeSlots, newTimeSlot].sort((a,b) => a.startTime.localeCompare(b.startTime)) 
+    }));
     toast({ title: "Time Slot Added" });
   };
 
@@ -97,16 +92,29 @@ export function useSchedule() {
     toast({ title: "Time Slot Deleted", description: "Time slot and its scheduled items have been removed." });
   };
   
-  const updateDaySettings = (updatedDaySettings: DaySetting[]) => {
-    // Explicitly spread to ensure a new array reference, promoting change detection.
-    updateData(prev => ({ ...prev, daySettings: [...updatedDaySettings] }));
+  const updateDaySettings = (updatedDaySettingsFromModal: DaySetting[]) => {
+    setData(prevScheduleData => {
+      // Create a new array where each setting object is also a new object.
+      const newDaySettings = updatedDaySettingsFromModal.map(setting => ({ ...setting }));
+      return {
+        ...prevScheduleData, // Spread all existing properties from prevScheduleData
+        daySettings: newDaySettings, // Overwrite daySettings with the new immutable array
+      };
+    });
     toast({ title: "Day Settings Updated" });
   };
 
   const updateCustomDayOrder = (newOrder: DayOfWeek[]) => {
-    updateData(prev => ({...prev, settings: { ...prev.settings, customDayOrder: newOrder }}));
-    // No separate toast needed if updateDaySettings already toasts, or add one if preferred.
+    setData(prevScheduleData => ({
+      ...prevScheduleData, // Spread all existing properties
+      settings: { // Create a new settings object
+        ...(prevScheduleData.settings || INITIAL_SCHEDULE_DATA.settings), // Spread existing settings or initial if none
+        customDayOrder: [...newOrder], // Overwrite customDayOrder with a new array
+      },
+    }));
+    toast({ title: "Day Order Updated" });
   };
+
 
   const addScheduledItem = (item: Omit<ScheduledItem, 'id'>) => {
     const isOccupied = data.scheduledItems.some(si => si.day === item.day && si.timeSlotId === item.timeSlotId);
@@ -169,15 +177,18 @@ export function useSchedule() {
       const movingItemId = !isSourceBank ? draggableId.replace('scheduled-item-', '') : null;
       const movingItemDetails = movingItemId ? data.scheduledItems.find(si => si.id === movingItemId) : null;
 
-      if (isSourceBank && subjectIdFromBank) { // Dragging from Bank
+      if (isSourceBank && subjectIdFromBank) { 
         if (existingItemInDest) {
           toast({ variant: "destructive", title: "Slot Occupied", description: "Drag from bank to an empty slot or swap existing items." });
           return;
         }
-        addScheduledItem({ subjectId: subjectIdFromBank, day: destDay, timeSlotId: destTimeSlotId });
-      } else if (movingItemDetails) { // Dragging within Schedule
-        if (existingItemInDest) { // Destination is occupied, swap
-          if (existingItemInDest.id === movingItemDetails.id) return; // Dragged to its own spot
+        const added = addScheduledItem({ subjectId: subjectIdFromBank, day: destDay, timeSlotId: destTimeSlotId });
+        if (added) { // Check if item was actually added (not prevented by slot occupied)
+             // Toast is already handled by addScheduledItem
+        }
+      } else if (movingItemDetails) { 
+        if (existingItemInDest) { 
+          if (existingItemInDest.id === movingItemDetails.id) return; 
           updateData(prev => ({
             ...prev,
             scheduledItems: prev.scheduledItems.map(si => {
@@ -187,7 +198,7 @@ export function useSchedule() {
             }),
           }));
           toast({ title: "Items Swapped" });
-        } else { // Destination is empty, move
+        } else { 
           updateData(prev => ({
             ...prev,
             scheduledItems: prev.scheduledItems.map(si =>
@@ -295,7 +306,7 @@ export function useSchedule() {
         logging: true,
         useCORS: true,
         scale: 2, 
-        backgroundColor: '#E3F2FD' 
+        backgroundColor: '#E3F2FD'
       });
       const image = canvas.toDataURL('image/png', 1.0);
       const link = document.createElement('a');
@@ -316,12 +327,9 @@ export function useSchedule() {
   };
   
   const sortedTimeSlots = data.timeSlots ? [...data.timeSlots].sort((a, b) => a.startTime.localeCompare(b.startTime)) : [];
-  const customDayOrder = data.settings?.customDayOrder || INITIAL_SCHEDULE_DATA.settings.customDayOrder;
+  const customDayOrderFromSettings = data.settings?.customDayOrder || INITIAL_SCHEDULE_DATA.settings.customDayOrder;
   const daySettingsFromData = data.daySettings || INITIAL_SCHEDULE_DATA.daySettings;
 
-  const activeDays = customDayOrder.filter(dayName => 
-    daySettingsFromData.find(ds => ds.name === dayName)?.isActive
-  );
 
   return {
     isLoaded,
@@ -329,8 +337,7 @@ export function useSchedule() {
     timeSlots: sortedTimeSlots,
     daySettings: daySettingsFromData,
     scheduledItems: data.scheduledItems || [],
-    customDayOrder: customDayOrder,
-    activeDays: activeDays, 
+    customDayOrder: customDayOrderFromSettings, 
     copiedItem,
     actions: {
       addSubject,
@@ -339,8 +346,8 @@ export function useSchedule() {
       addTimeSlot,
       updateTimeSlot,
       deleteTimeSlot,
-      updateDaySettings,
-      updateCustomDayOrder,
+      updateDaySettings, // Now uses direct setData
+      updateCustomDayOrder, // Now uses direct setData
       addScheduledItem,
       deleteScheduledItem,
       handleDragEnd,
@@ -353,4 +360,3 @@ export function useSchedule() {
     },
   };
 }
-

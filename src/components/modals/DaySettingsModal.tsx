@@ -42,9 +42,11 @@ export function DaySettingsModal({
   const [currentDayOrder, setCurrentDayOrder] = useState<DayOfWeek[]>([]);
 
   useEffect(() => {
-    if (isOpen) { // Only reset when modal opens or critical props change
-      setCurrentDaySettings(JSON.parse(JSON.stringify(initialDaySettings))); // Deep copy
-      setCurrentDayOrder([...initialCustomDayOrder]); // Shallow copy is fine for array of strings
+    if (isOpen) { 
+      // Deep copy for day settings to ensure modal edits don't affect parent state directly
+      setCurrentDaySettings(JSON.parse(JSON.stringify(initialDaySettings))); 
+      // Shallow copy for custom day order as it's an array of strings
+      setCurrentDayOrder([...initialCustomDayOrder]); 
     }
   }, [isOpen, initialDaySettings, initialCustomDayOrder]);
 
@@ -93,7 +95,7 @@ export function DaySettingsModal({
           </DialogDescription>
         </DialogHeader>
         
-        <ScrollArea className="flex-grow min-h-0"> {/* Allow scroll area to take available space and scroll */}
+        <ScrollArea className="flex-grow min-h-0"> 
           <div className="py-4">
             <ClientOnly fallback={<div className="p-4 text-center">Loading day settings...</div>}>
               <DragDropContext onDragEnd={onDragEnd}>
@@ -155,7 +157,7 @@ export function DaySettingsModal({
           </div>
         </ScrollArea>
 
-        <DialogFooter className="mt-auto pt-4"> {/* Ensure footer is at the bottom */}
+        <DialogFooter className="mt-auto pt-4"> 
           <DialogClose asChild>
             <Button type="button" variant="outline">Cancel</Button>
           </DialogClose>
@@ -165,4 +167,3 @@ export function DaySettingsModal({
     </Dialog>
   );
 }
-
