@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from 'react';
@@ -95,7 +96,12 @@ export function DaySettingsModal({
         <div className="py-4">
           <ClientOnly fallback={<div className="p-4 text-center">Loading day settings...</div>}>
             <DragDropContext onDragEnd={onDragEnd}>
-              <Droppable droppableId="daysOrder">
+              <Droppable 
+                droppableId="daysOrder"
+                isDropDisabled={false}
+                isCombineEnabled={false}
+                ignoreContainerClipping={false}
+              >
                 {(provided) => (
                   <ul {...provided.droppableProps} ref={provided.innerRef} className="space-y-3">
                     {currentDayOrder.map((dayName, index) => {
