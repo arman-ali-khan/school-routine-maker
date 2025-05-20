@@ -25,6 +25,7 @@ export function TimeSlotCell({ day, timeSlot, scheduledItems, subjects, onDelete
       type="SCHEDULED_ITEM"
       isDropDisabled={false} // Explicitly set to false
       isCombineEnabled={false} // Explicitly set to false
+      ignoreContainerClipping={false} // Explicitly set to false
     >
       {(provided, snapshot) => (
         <div
@@ -53,3 +54,4 @@ export function TimeSlotCell({ day, timeSlot, scheduledItems, subjects, onDelete
     </Droppable>
   );
 }
+
