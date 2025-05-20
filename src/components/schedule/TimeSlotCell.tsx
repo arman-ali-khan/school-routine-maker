@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { ScheduledItem, Subject, TimeSlot, DayOfWeek } from '@/lib/types';
@@ -23,6 +24,7 @@ export function TimeSlotCell({ day, timeSlot, scheduledItems, subjects, onDelete
       droppableId={`cell-${day}-${timeSlot.id}`} 
       type="SCHEDULED_ITEM"
       isDropDisabled={false} // Explicitly set to false
+      isCombineEnabled={false} // Explicitly set to false
     >
       {(provided, snapshot) => (
         <div
