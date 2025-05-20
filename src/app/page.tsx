@@ -31,7 +31,7 @@ export default function HomePage() {
   const [isDaySettingsModalOpen, setIsDaySettingsModalOpen] = useState(false);
   
   const importFileInputRef = useRef<HTMLInputElement>(null);
-  const scheduleViewRef = useRef<HTMLDivElement>(null); // Ref for the schedule view element
+  const scheduleViewRef = useRef<HTMLDivElement>(null); 
 
   const handleImportClick = () => {
     importFileInputRef.current?.click();
@@ -70,8 +70,8 @@ export default function HomePage() {
             onOpenDaySettingsModal={() => setIsDaySettingsModalOpen(true)}
             onExport={actions.exportData}
             onImportClick={handleImportClick}
-            onExportAsImage={() => actions.exportAsImage(scheduleViewRef.current)}
-            onExportAsPdf={actions.exportAsPdf}
+            onExportAsImage={() => actions.exportAsImage(() => scheduleViewRef.current)}
+            onExportAsPdf={() => actions.exportAsPdf(() => scheduleViewRef.current)}
           />
           <input
             type="file"
@@ -87,7 +87,7 @@ export default function HomePage() {
             </aside>
             <section className="flex-1 flex flex-col h-full min-w-0">
               <ScheduleView
-                ref={scheduleViewRef} // Pass the ref to ScheduleView
+                ref={scheduleViewRef} 
                 daySettings={daySettings}
                 customDayOrder={customDayOrder}
                 timeSlots={timeSlots}
@@ -132,3 +132,4 @@ export default function HomePage() {
     </ClientOnly>
   );
 }
+
