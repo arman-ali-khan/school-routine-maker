@@ -20,6 +20,7 @@ import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { Subject } from '@/lib/types';
 import { Trash2, Edit3 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 const subjectSchema = z.object({
   name: z.string().min(1, "Subject name is required"),
@@ -105,8 +106,23 @@ export function SubjectModal({ isOpen, onClose, subjects, addSubject, updateSubj
           <div>
             <Label htmlFor="color">Color</Label>
             <div className="flex items-center gap-2">
-              <Input id="color" type="color" {...register('color')} className="w-12 h-10 p-1" />
-              <Input {...register('color')} placeholder="#RRGGBB" className="flex-1" />
+              {/* Use a raw HTML input for color picker to avoid styling conflicts */}
+              <input
+                id="color-picker" // Different ID for the picker itself if Label points to text input
+                type="color"
+                {...register('color')}
+                className={cn(
+                  "w-12 h-10 rounded-md border border-input bg-background p-0", // p-0 is important
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                )}
+              />
+              <Input 
+                id="color" // Label should point to this for accessibility if it describes the hex code
+                {...register('color')} 
+                placeholder="#RRGGBB" 
+                className="flex-1" 
+                aria-label="Color hex code"
+              />
             </div>
             {errors.color && <p className="text-sm text-destructive">{errors.color.message}</p>}
           </div>
