@@ -14,12 +14,11 @@ export interface TimeSlot {
   isBreak?: boolean;
 }
 
-export type DayOfWeek = 'Sunday' | 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday';
+export type DayOfWeek = 'Sunday' | 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Saturday';
 
 export interface DaySetting {
   name: DayOfWeek;
   isActive: boolean;
-  // isWorkingDay: boolean; // Removed: For visual distinction, actual scheduling might still be allowed
 }
 
 export interface ScheduledItem {
