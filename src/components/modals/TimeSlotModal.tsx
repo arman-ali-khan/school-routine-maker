@@ -21,7 +21,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { TimeSlot } from '@/lib/types';
 import { Trash2, Edit3 } from 'lucide-react';
-import { FormField, FormItem, FormControl, FormLabel } from '@/components/ui/form'; // For controlled Checkbox
+import { Form, FormField, FormItem, FormControl, FormLabel } from '@/components/ui/form'; // For controlled Checkbox
 
 const timeFormatRegex = /^(0[0-9]|1[0-9]|2[0-3]):([0-5][0-9])$/; // HH:MM format
 
@@ -48,10 +48,11 @@ interface TimeSlotModalProps {
 export function TimeSlotModal({ isOpen, onClose, timeSlots, addTimeSlot, updateTimeSlot, deleteTimeSlot }: TimeSlotModalProps) {
   const [editingSlot, setEditingSlot] = React.useState<TimeSlot | null>(null);
   
-  const { register, handleSubmit, reset, setValue, control, formState: { errors } } = useForm<TimeSlotFormData>({
+  const methods = useForm<TimeSlotFormData>({
     resolver: zodResolver(timeSlotSchema),
     defaultValues: { isBreak: false, startTime: "08:00", endTime: "08:45" }
   });
+  const { register, handleSubmit, reset, setValue, control, formState: { errors } } = methods;
 
   useEffect(() => {
     if (editingSlot) {
@@ -103,48 +104,50 @@ export function TimeSlotModal({ isOpen, onClose, timeSlots, addTimeSlot, updateT
           </DialogDescription>
         </DialogHeader>
         
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="startTime">Start Time</Label>
-              <Input type="time" id="startTime" {...register('startTime')} step="900" /> {/* 900 seconds = 15 minutes */}
-              {errors.startTime && <p className="text-sm text-destructive">{errors.startTime.message}</p>}
+        <Form {...methods}>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="startTime">Start Time</Label>
+                <Input type="time" id="startTime" {...register('startTime')} step="900" /> {/* 900 seconds = 15 minutes */}
+                {errors.startTime && <p className="text-sm text-destructive">{errors.startTime.message}</p>}
+              </div>
+              <div>
+                <Label htmlFor="endTime">End Time</Label>
+                <Input type="time" id="endTime" {...register('endTime')} step="900"/>
+                {errors.endTime && <p className="text-sm text-destructive">{errors.endTime.message}</p>}
+              </div>
             </div>
-            <div>
-              <Label htmlFor="endTime">End Time</Label>
-              <Input type="time" id="endTime" {...register('endTime')} step="900"/>
-              {errors.endTime && <p className="text-sm text-destructive">{errors.endTime.message}</p>}
-            </div>
-          </div>
-           {errors.root?.endTime && <p className="text-sm text-destructive">{errors.root.endTime.message}</p>}
-          
-          <FormField
-            control={control}
-            name="isBreak"
-            render={({ field }) => (
-              <FormItem className="flex flex-row items-center space-x-2 py-2">
-                <FormControl>
-                  <Checkbox
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                    id="isBreak"
-                  />
-                </FormControl>
-                <FormLabel 
-                  htmlFor="isBreak" 
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  Mark as Break
-                </FormLabel>
-              </FormItem>
-            )}
-          />
+            {errors.root?.endTime && <p className="text-sm text-destructive">{errors.root.endTime.message}</p>}
+            
+            <FormField
+              control={control}
+              name="isBreak"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center space-x-2 py-2">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      id="isBreak"
+                    />
+                  </FormControl>
+                  <FormLabel 
+                    htmlFor="isBreak" 
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    Mark as Break
+                  </FormLabel>
+                </FormItem>
+              )}
+            />
 
-          <DialogFooter>
-             {editingSlot && <Button type="button" variant="outline" onClick={handleCancelEdit}>Cancel Edit</Button>}
-            <Button type="submit">{editingSlot ? 'Update Slot' : 'Add Slot'}</Button>
-          </DialogFooter>
-        </form>
+            <DialogFooter>
+              {editingSlot && <Button type="button" variant="outline" onClick={handleCancelEdit}>Cancel Edit</Button>}
+              <Button type="submit">{editingSlot ? 'Update Slot' : 'Add Slot'}</Button>
+            </DialogFooter>
+          </form>
+        </Form>
 
         {!editingSlot && timeSlots.length > 0 && (
            <>
@@ -178,4 +181,3 @@ export function TimeSlotModal({ isOpen, onClose, timeSlots, addTimeSlot, updateT
     </Dialog>
   );
 }
-
