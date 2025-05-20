@@ -18,6 +18,7 @@ import type { DaySetting, DayOfWeek } from '@/lib/types';
 import { DragDropContext, Droppable, Draggable, type DropResult } from 'react-beautiful-dnd';
 import { GripVertical } from 'lucide-react';
 import { ClientOnly } from '@/components/ClientOnly';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 
 interface DaySettingsModalProps {
@@ -84,7 +85,7 @@ export function DaySettingsModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {if (!open) onClose();}}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] max-h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Manage Days</DialogTitle>
           <DialogDescription>
@@ -92,67 +93,69 @@ export function DaySettingsModal({
           </DialogDescription>
         </DialogHeader>
         
-        <div className="py-4">
-          <ClientOnly fallback={<div className="p-4 text-center">Loading day settings...</div>}>
-            <DragDropContext onDragEnd={onDragEnd}>
-              <Droppable 
-                droppableId="daysOrder"
-                isDropDisabled={false}
-                isCombineEnabled={false}
-                ignoreContainerClipping={false}
-              >
-                {(provided) => (
-                  <ul {...provided.droppableProps} ref={provided.innerRef} className="space-y-3">
-                    {currentDayOrder.map((dayName, index) => {
-                      const daySetting = getDaySetting(dayName);
-                      if (!daySetting) return null;
-                      
-                      return (
-                        <Draggable key={dayName} draggableId={dayName} index={index}>
-                          {(providedDraggable, snapshot) => (
-                            <li
-                              ref={providedDraggable.innerRef}
-                              {...providedDraggable.draggableProps}
-                              className={`flex items-center justify-between p-3 rounded-md border bg-card ${snapshot.isDragging ? 'shadow-lg' : ''}`}
-                            >
-                              <div className="flex items-center gap-2">
-                                <button {...providedDraggable.dragHandleProps} className="p-1 cursor-grab active:cursor-grabbing">
-                                  <GripVertical className="h-5 w-5 text-muted-foreground" />
-                                </button>
-                                <span className="font-medium">{daySetting.name}</span>
-                              </div>
-                              <div className="flex items-center gap-4">
-                                <div>
-                                  <Label htmlFor={`active-${dayName}`} className="text-xs mr-2">Active</Label>
-                                  <Switch
-                                    id={`active-${dayName}`}
-                                    checked={daySetting.isActive}
-                                    onCheckedChange={() => handleToggleActive(dayName)}
-                                  />
+        <ScrollArea className="flex-grow min-h-0"> {/* Allow scroll area to take available space and scroll */}
+          <div className="py-4">
+            <ClientOnly fallback={<div className="p-4 text-center">Loading day settings...</div>}>
+              <DragDropContext onDragEnd={onDragEnd}>
+                <Droppable 
+                  droppableId="daysOrder"
+                  isDropDisabled={false}
+                  isCombineEnabled={false}
+                  ignoreContainerClipping={false}
+                >
+                  {(provided) => (
+                    <ul {...provided.droppableProps} ref={provided.innerRef} className="space-y-3">
+                      {currentDayOrder.map((dayName, index) => {
+                        const daySetting = getDaySetting(dayName);
+                        if (!daySetting) return null;
+                        
+                        return (
+                          <Draggable key={dayName} draggableId={dayName} index={index}>
+                            {(providedDraggable, snapshot) => (
+                              <li
+                                ref={providedDraggable.innerRef}
+                                {...providedDraggable.draggableProps}
+                                className={`flex items-center justify-between p-3 rounded-md border bg-card ${snapshot.isDragging ? 'shadow-lg' : ''}`}
+                              >
+                                <div className="flex items-center gap-2">
+                                  <button {...providedDraggable.dragHandleProps} className="p-1 cursor-grab active:cursor-grabbing">
+                                    <GripVertical className="h-5 w-5 text-muted-foreground" />
+                                  </button>
+                                  <span className="font-medium">{daySetting.name}</span>
                                 </div>
-                                <div>
-                                  <Label htmlFor={`working-${dayName}`} className="text-xs mr-2">Working</Label>
-                                  <Switch
-                                    id={`working-${dayName}`}
-                                    checked={daySetting.isWorkingDay}
-                                    onCheckedChange={() => handleToggleWorkingDay(dayName)}
-                                  />
+                                <div className="flex items-center gap-4">
+                                  <div>
+                                    <Label htmlFor={`active-${dayName}`} className="text-xs mr-2">Active</Label>
+                                    <Switch
+                                      id={`active-${dayName}`}
+                                      checked={daySetting.isActive}
+                                      onCheckedChange={() => handleToggleActive(dayName)}
+                                    />
+                                  </div>
+                                  <div>
+                                    <Label htmlFor={`working-${dayName}`} className="text-xs mr-2">Working</Label>
+                                    <Switch
+                                      id={`working-${dayName}`}
+                                      checked={daySetting.isWorkingDay}
+                                      onCheckedChange={() => handleToggleWorkingDay(dayName)}
+                                    />
+                                  </div>
                                 </div>
-                              </div>
-                            </li>
-                          )}
-                        </Draggable>
-                      );
-                    })}
-                    {provided.placeholder}
-                  </ul>
-                )}
-              </Droppable>
-            </DragDropContext>
-          </ClientOnly>
-        </div>
+                              </li>
+                            )}
+                          </Draggable>
+                        );
+                      })}
+                      {provided.placeholder}
+                    </ul>
+                  )}
+                </Droppable>
+              </DragDropContext>
+            </ClientOnly>
+          </div>
+        </ScrollArea>
 
-        <DialogFooter>
+        <DialogFooter className="mt-auto pt-4"> {/* Ensure footer is at the bottom */}
           <DialogClose asChild>
             <Button type="button" variant="outline">Cancel</Button>
           </DialogClose>
