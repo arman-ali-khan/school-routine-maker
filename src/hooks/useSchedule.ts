@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import type { DropResult } from 'react-beautiful-dnd';
 import { v4 as uuidv4 } from 'uuid';
 import useLocalStorage from './useLocalStorage';
@@ -26,7 +26,7 @@ export function useSchedule() {
     setData(prev => ({ 
       ...prev, 
       subjects: [...prev.subjects, newSubject],
-      settings: prev.settings || { ...INITIAL_SCHEDULE_DATA.settings },
+      settings: prev.settings || { ...INITIAL_SCHEDULE_DATA.settings, customDayOrder: [...INITIAL_SCHEDULE_DATA.settings.customDayOrder] },
     }));
     toast({ title: "Subject Added", description: `${newSubject.name} has been added.` });
   };
@@ -35,7 +35,7 @@ export function useSchedule() {
     setData(prev => ({
       ...prev,
       subjects: prev.subjects.map(s => s.id === updatedSubject.id ? { ...updatedSubject } : { ...s }),
-      settings: prev.settings || { ...INITIAL_SCHEDULE_DATA.settings },
+      settings: prev.settings || { ...INITIAL_SCHEDULE_DATA.settings, customDayOrder: [...INITIAL_SCHEDULE_DATA.settings.customDayOrder] },
     }));
     toast({ title: "Subject Updated", description: `${updatedSubject.name} has been updated.` });
   };
@@ -45,7 +45,7 @@ export function useSchedule() {
       ...prev,
       subjects: prev.subjects.filter(s => s.id !== subjectId),
       scheduledItems: prev.scheduledItems.filter(si => si.subjectId !== subjectId),
-      settings: prev.settings || { ...INITIAL_SCHEDULE_DATA.settings },
+      settings: prev.settings || { ...INITIAL_SCHEDULE_DATA.settings, customDayOrder: [...INITIAL_SCHEDULE_DATA.settings.customDayOrder] },
     }));
     toast({ title: "Subject Deleted", description: "Subject and its scheduled occurrences have been removed." });
   };
@@ -62,7 +62,7 @@ export function useSchedule() {
     setData(prev => ({ 
       ...prev, 
       timeSlots: [...(prev.timeSlots || []), newTimeSlot].sort((a,b) => a.startTime.localeCompare(b.startTime)),
-      settings: prev.settings || { ...INITIAL_SCHEDULE_DATA.settings },
+      settings: prev.settings || { ...INITIAL_SCHEDULE_DATA.settings, customDayOrder: [...INITIAL_SCHEDULE_DATA.settings.customDayOrder] },
     }));
     toast({ title: "Time Slot Added" });
   };
@@ -71,7 +71,7 @@ export function useSchedule() {
     setData(prev => ({
       ...prev,
       timeSlots: (prev.timeSlots || []).map(ts => ts.id === updatedTimeSlot.id ? { ...updatedTimeSlot } : { ...ts }).sort((a,b) => a.startTime.localeCompare(b.startTime)),
-      settings: prev.settings || { ...INITIAL_SCHEDULE_DATA.settings },
+      settings: prev.settings || { ...INITIAL_SCHEDULE_DATA.settings, customDayOrder: [...INITIAL_SCHEDULE_DATA.settings.customDayOrder] },
     }));
      toast({ title: "Time Slot Updated" });
   };
@@ -81,41 +81,29 @@ export function useSchedule() {
       ...prev,
       timeSlots: (prev.timeSlots || []).filter(ts => ts.id !== timeSlotId),
       scheduledItems: (prev.scheduledItems || []).filter(si => si.timeSlotId !== timeSlotId),
-      settings: prev.settings || { ...INITIAL_SCHEDULE_DATA.settings },
+      settings: prev.settings || { ...INITIAL_SCHEDULE_DATA.settings, customDayOrder: [...INITIAL_SCHEDULE_DATA.settings.customDayOrder] },
     }));
     toast({ title: "Time Slot Deleted", description: "Time slot and its scheduled items have been removed." });
   };
   
   const updateDaySettings = (updatedDaySettingsFromModal: DaySetting[]) => {
     setData(prevScheduleData => {
-      const newDaySettings = VALID_DAYS_OF_WEEK.map(validDay => {
-        const modalSetting = updatedDaySettingsFromModal.find(ds => ds.name === validDay);
-        if (modalSetting) {
-          return { name: validDay, isActive: modalSetting.isActive };
-        }
-        const existingSetting = (prevScheduleData.daySettings || []).find(ds => ds.name === validDay);
-        if (existingSetting) {
-          return { name: validDay, isActive: existingSetting.isActive };
-        }
-        const initialDefaultSetting = INITIAL_SCHEDULE_DATA.daySettings.find(ds => ds.name === validDay);
-        return { name: validDay, isActive: initialDefaultSetting?.isActive ?? false };
-      });
-
-      const newSubjects = prevScheduleData.subjects?.map(s => ({ ...s })) || [];
-      const newTimeSlots = prevScheduleData.timeSlots?.map(ts => ({ ...ts })) || [];
-      const newScheduledItems = prevScheduleData.scheduledItems?.map(si => ({ ...si })) || [];
-      const newSettings = {
-        customDayOrder: prevScheduleData.settings?.customDayOrder
-                          ?.filter(day => (VALID_DAYS_OF_WEEK as ReadonlyArray<DayOfWeek>).includes(day))
-                          .map(d => d) || [...INITIAL_SCHEDULE_DATA.settings.customDayOrder],
-      };
+      const currentSubjects = prevScheduleData.subjects?.map(s => ({ ...s })) || [];
+      const currentTimeSlots = prevScheduleData.timeSlots?.map(ts => ({ ...ts })) || [];
+      const currentScheduledItems = prevScheduleData.scheduledItems?.map(si => ({ ...si })) || [];
+      const currentSettings = prevScheduleData.settings || { customDayOrder: [...INITIAL_SCHEDULE_DATA.settings.customDayOrder] };
       
+      const newDaySettings = updatedDaySettingsFromModal.map(setting => ({ ...setting }));
+
       return {
-        subjects: newSubjects,
-        timeSlots: newTimeSlots,
+        subjects: currentSubjects,
+        timeSlots: currentTimeSlots,
         daySettings: newDaySettings,
-        scheduledItems: newScheduledItems,
-        settings: newSettings,
+        scheduledItems: currentScheduledItems,
+        settings: {
+          ...currentSettings,
+          customDayOrder: currentSettings.customDayOrder ? [...currentSettings.customDayOrder] : [...INITIAL_SCHEDULE_DATA.settings.customDayOrder]
+        },
       };
     });
     toast({ title: "Day Settings Updated" });
@@ -132,17 +120,16 @@ export function useSchedule() {
         }
       });
       
-      const newSubjects = prevScheduleData.subjects?.map(s => ({ ...s })) || [];
-      const newTimeSlots = prevScheduleData.timeSlots?.map(ts => ({ ...ts })) || [];
-      const newScheduledItems = prevScheduleData.scheduledItems?.map(si => ({ ...si })) || [];
-      const newDaySettings = (prevScheduleData.daySettings || INITIAL_SCHEDULE_DATA.daySettings).map(ds => ({...ds}));
-
+      const currentSubjects = prevScheduleData.subjects?.map(s => ({ ...s })) || [];
+      const currentTimeSlots = prevScheduleData.timeSlots?.map(ts => ({ ...ts })) || [];
+      const currentScheduledItems = prevScheduleData.scheduledItems?.map(si => ({ ...si })) || [];
+      const currentDaySettings = (prevScheduleData.daySettings || INITIAL_SCHEDULE_DATA.daySettings).map(ds => ({...ds}));
 
       return {
-        subjects: newSubjects,
-        timeSlots: newTimeSlots,
-        daySettings: newDaySettings,
-        scheduledItems: newScheduledItems,
+        subjects: currentSubjects,
+        timeSlots: currentTimeSlots,
+        daySettings: currentDaySettings,
+        scheduledItems: currentScheduledItems,
         settings: {
           customDayOrder: newCustomOrder,
         },
@@ -150,7 +137,6 @@ export function useSchedule() {
     });
     toast({ title: "Day Order Updated" });
   };
-
 
   const addScheduledItem = (item: Omit<ScheduledItem, 'id'>) => {
     const isOccupied = (data.scheduledItems || []).some(si => si.day === item.day && si.timeSlotId === item.timeSlotId);
@@ -162,7 +148,7 @@ export function useSchedule() {
     setData(prev => ({ 
         ...prev, 
         scheduledItems: [...(prev.scheduledItems || []), newScheduledItem],
-        settings: prev.settings || { ...INITIAL_SCHEDULE_DATA.settings },
+        settings: prev.settings || { ...INITIAL_SCHEDULE_DATA.settings, customDayOrder: [...INITIAL_SCHEDULE_DATA.settings.customDayOrder] },
     }));
     const subject = (data.subjects || []).find(s => s.id === item.subjectId);
     const timeSlot = (data.timeSlots || []).find(ts => ts.id === item.timeSlotId);
@@ -177,7 +163,7 @@ export function useSchedule() {
     setData(prev => ({
       ...prev,
       scheduledItems: (prev.scheduledItems || []).filter(si => si.id !== itemId),
-      settings: prev.settings || { ...INITIAL_SCHEDULE_DATA.settings },
+      settings: prev.settings || { ...INITIAL_SCHEDULE_DATA.settings, customDayOrder: [...INITIAL_SCHEDULE_DATA.settings.customDayOrder] },
     }));
     toast({ title: "Item Removed", description: `${subject?.name || 'Item'} on ${itemToDelete.day} removed from schedule.` });
   };
@@ -239,7 +225,7 @@ export function useSchedule() {
               if (si.id === existingItemInDest.id) return { ...si, day: movingItemDetails.day, timeSlotId: movingItemDetails.timeSlotId };
               return si;
             }).map(item => ({...item})),
-            settings: prev.settings || { ...INITIAL_SCHEDULE_DATA.settings },
+            settings: prev.settings || { ...INITIAL_SCHEDULE_DATA.settings, customDayOrder: [...INITIAL_SCHEDULE_DATA.settings.customDayOrder] },
           }));
           toast({ title: "Items Swapped" });
         } else { 
@@ -248,7 +234,7 @@ export function useSchedule() {
             scheduledItems: (prev.scheduledItems || []).map(si =>
               si.id === movingItemDetails.id ? { ...si, day: destDay, timeSlotId: destTimeSlotId } : si
             ).map(item => ({...item})),
-            settings: prev.settings || { ...INITIAL_SCHEDULE_DATA.settings },
+            settings: prev.settings || { ...INITIAL_SCHEDULE_DATA.settings, customDayOrder: [...INITIAL_SCHEDULE_DATA.settings.customDayOrder] },
           }));
           toast({ title: "Item Moved" });
         }
@@ -258,7 +244,7 @@ export function useSchedule() {
   };
 
   const handleCopyItem = (itemToCopy: ScheduledItem) => {
-    setCopiedItem({ ...itemToCopy }); // Store a copy
+    setCopiedItem({ ...itemToCopy }); 
     const subject = (data.subjects || []).find(s => s.id === itemToCopy.subjectId);
     toast({ title: "Item Copied", description: `${subject?.name || 'Item'} on ${itemToCopy.day} copied.` });
   };
@@ -286,7 +272,6 @@ export function useSchedule() {
       day: targetDay,
       timeSlotId: targetTimeSlotId,
     });
-    // Do not clear copiedItem here, allow multiple pastes
   };
 
   const exportData = () => {
@@ -318,28 +303,18 @@ export function useSchedule() {
         const jsonString = e.target?.result as string;
         const importedData = JSON.parse(jsonString) as ScheduleData;
         
-        if (
-          typeof importedData.subjects === 'undefined' ||
-          typeof importedData.timeSlots === 'undefined' ||
-          // DaySettings might be empty if user never touched them, so allow it
-          // typeof importedData.daySettings === 'undefined' || 
-          typeof importedData.scheduledItems === 'undefined'
-          // Settings might be empty if user never touched them
-          // typeof importedData.settings?.customDayOrder === 'undefined'
-        ) {
-           // Provide default for daySettings and settings if missing
-          const validatedData = {
-            ...INITIAL_SCHEDULE_DATA, // Start with all defaults
-            ...importedData,        // Override with imported values
+        const validatedData = {
+            ...INITIAL_SCHEDULE_DATA, 
+            ...importedData,        
+            subjects: importedData.subjects || INITIAL_SCHEDULE_DATA.subjects,
+            timeSlots: importedData.timeSlots || INITIAL_SCHEDULE_DATA.timeSlots,
             daySettings: importedData.daySettings || [...INITIAL_SCHEDULE_DATA.daySettings.map(ds => ({...ds}))],
+            scheduledItems: importedData.scheduledItems || INITIAL_SCHEDULE_DATA.scheduledItems,
             settings: {
               customDayOrder: importedData.settings?.customDayOrder || [...INITIAL_SCHEDULE_DATA.settings.customDayOrder.map(d => d)],
             },
           };
           setData(validatedData);
-        } else {
-           setData(importedData); 
-        }
         toast({ title: "Data Imported", description: "Your schedule has been imported successfully." });
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : "Invalid file or data format.";
@@ -384,44 +359,56 @@ export function useSchedule() {
     toast({ title: "Export as PDF", description: "This feature is not yet implemented. You can use your browser's Print to PDF function." });
   };
   
-  const sortedTimeSlots = (data.timeSlots || INITIAL_SCHEDULE_DATA.timeSlots).slice().sort((a, b) => a.startTime.localeCompare(b.startTime));
+  const sortedTimeSlots = useMemo(() => {
+    return (data.timeSlots || INITIAL_SCHEDULE_DATA.timeSlots).slice().sort((a, b) => a.startTime.localeCompare(b.startTime));
+  }, [data.timeSlots]);
   
-  // Deep clone initial data for safe fallbacks
-  const initialDaySettingsCloned = INITIAL_SCHEDULE_DATA.daySettings.map(s => ({ ...s }));
-  const initialCustomDayOrderCloned = [...INITIAL_SCHEDULE_DATA.settings.customDayOrder];
+  const initialDaySettingsCloned = useMemo(() => JSON.parse(JSON.stringify(INITIAL_SCHEDULE_DATA.daySettings)), []);
+  const initialCustomDayOrderCloned = useMemo(() => JSON.parse(JSON.stringify(INITIAL_SCHEDULE_DATA.settings.customDayOrder)), []);
 
-  // Safely access current day settings and custom order from local storage data
-  const currentDaySettingsRaw = data.daySettings && Array.isArray(data.daySettings) ? data.daySettings : [];
-  const currentCustomDayOrderRaw = data.settings?.customDayOrder && Array.isArray(data.settings.customDayOrder) ? data.settings.customDayOrder : [];
-
-  // Reconcile daySettings: Ensure every VALID_DAY_OF_WEEK has an entry.
-  // Prioritize user's setting, then initial default, then ensure active:false if no info.
-  const reconciledDaySettings: DaySetting[] = VALID_DAYS_OF_WEEK.map(validDayName => {
-    const userSetting = currentDaySettingsRaw.find(ds => ds.name === validDayName);
-    const initialSetting = initialDaySettingsCloned.find(is => is.name === validDayName);
-
-    if (userSetting && typeof userSetting.isActive === 'boolean') {
-      return { name: userSetting.name, isActive: userSetting.isActive };
-    }
-    if (initialSetting) { // Fallback to (cloned) initial default
-      return { name: initialSetting.name, isActive: initialSetting.isActive };
-    }
-    // Should only be reached if VALID_DAYS_OF_WEEK contains a day not in INITIAL_SCHEDULE_DATA.daySettings
-    return { name: validDayName, isActive: false };
-  });
-
-  // Reconcile customDayOrder: Ensure it's a valid array and contains all VALID_DAYS_OF_WEEK.
-  let tempCustomDayOrder = currentCustomDayOrderRaw.length > 0 ? [...currentCustomDayOrderRaw] : initialCustomDayOrderCloned;
+  const currentDaySettingsRaw = useMemo(() => {
+    return data.daySettings && Array.isArray(data.daySettings) ? data.daySettings : [];
+  }, [data.daySettings]);
   
-  let reconciledCustomDayOrder: DayOfWeek[] = tempCustomDayOrder
-    .filter(dayName => (VALID_DAYS_OF_WEEK as ReadonlyArray<DayOfWeek>).includes(dayName));
+  const currentCustomDayOrderRaw = useMemo(() => {
+    return data.settings?.customDayOrder && Array.isArray(data.settings.customDayOrder) ? data.settings.customDayOrder : [];
+  }, [data.settings?.customDayOrder]);
 
-  VALID_DAYS_OF_WEEK.forEach(validDayName => {
-    if (!reconciledCustomDayOrder.includes(validDayName)) {
-      reconciledCustomDayOrder.push(validDayName); // Add missing valid days to the end
-    }
-  });
+  const reconciledDaySettings: DaySetting[] = useMemo(() => {
+    return VALID_DAYS_OF_WEEK.map(validDayName => {
+      const userSettingForThisDay = currentDaySettingsRaw.find(ds => ds.name === validDayName);
+      const initialSettingForThisDay = initialDaySettingsCloned.find(is => is.name === validDayName);
 
+      let isActiveStatus = false; 
+
+      if (userSettingForThisDay !== undefined && typeof userSettingForThisDay.isActive === 'boolean') {
+        isActiveStatus = userSettingForThisDay.isActive;
+      } else if (initialSettingForThisDay !== undefined && typeof initialSettingForThisDay.isActive === 'boolean') {
+        isActiveStatus = initialSettingForThisDay.isActive;
+      }
+      
+      return { name: validDayName, isActive: isActiveStatus };
+    });
+  }, [currentDaySettingsRaw, initialDaySettingsCloned]);
+
+  const reconciledCustomDayOrder: DayOfWeek[] = useMemo(() => {
+    let sourceOrderForReconciliation = currentCustomDayOrderRaw.length > 0 ? currentCustomDayOrderRaw : initialCustomDayOrderCloned;
+    
+    let validDaysInOrder = (Array.isArray(sourceOrderForReconciliation) ? sourceOrderForReconciliation : [])
+      .filter((dayName: DayOfWeek) => (VALID_DAYS_OF_WEEK as ReadonlyArray<DayOfWeek>).includes(dayName))
+      .reduce((acc: DayOfWeek[], current: DayOfWeek) => {
+          if (!acc.includes(current)) {
+              acc.push(current);
+          }
+          return acc;
+      }, []);
+    
+    const finalCustomDayOrderSet = new Set(validDaysInOrder);
+    VALID_DAYS_OF_WEEK.forEach(validDayName => {
+      finalCustomDayOrderSet.add(validDayName); 
+    });
+    return Array.from(finalCustomDayOrderSet);
+  }, [currentCustomDayOrderRaw, initialCustomDayOrderCloned]);
 
   return {
     isLoaded,
@@ -452,4 +439,3 @@ export function useSchedule() {
     },
   };
 }
-
