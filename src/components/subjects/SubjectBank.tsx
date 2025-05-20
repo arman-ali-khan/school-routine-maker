@@ -14,7 +14,7 @@ interface SubjectBankItemProps {
 
 function SubjectBankItem({ subject, index }: SubjectBankItemProps) {
   return (
-    <Draggable draggableId={`bank-subject-${subject.id}`} index={index}>
+    <Draggable draggableId={`bank-subject-${subject.id}`} index={index} type="SCHEDULED_ITEM">
       {(provided, snapshot) => (
         <div
           ref={provided.innerRef}
@@ -103,6 +103,7 @@ export function SubjectBank({ subjects }: SubjectBankProps) {
         <Droppable 
           droppableId="subject-bank-delete-zone" 
           isDropDisabled={false}
+          type="SCHEDULED_ITEM"
           isCombineEnabled={false}
           ignoreContainerClipping={false}
         >

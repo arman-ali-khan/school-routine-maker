@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { Subject, ScheduledItem, TimeSlot } from '@/lib/types';
@@ -33,7 +34,7 @@ const tinycolor = (color: string) => {
 export function ScheduledItemCard({ item, subject, timeSlot, index, onDelete }: ScheduledItemCardProps) {
   if (!subject || !timeSlot) {
     return ( // Fallback for missing data, though ideally this shouldn't happen
-        <Draggable draggableId={`scheduled-item-${item.id}`} index={index}>
+        <Draggable draggableId={`scheduled-item-${item.id}`} index={index} type="SCHEDULED_ITEM">
         {(provided) => (
             <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}
                 className="p-2 m-1 border rounded bg-destructive text-destructive-foreground text-xs">
@@ -50,7 +51,7 @@ export function ScheduledItemCard({ item, subject, timeSlot, index, onDelete }: 
   };
 
   return (
-    <Draggable draggableId={`scheduled-item-${item.id}`} index={index}>
+    <Draggable draggableId={`scheduled-item-${item.id}`} index={index} type="SCHEDULED_ITEM">
       {(provided, snapshot) => (
         <TooltipProvider delayDuration={300}>
           <Tooltip>
@@ -89,3 +90,4 @@ export function ScheduledItemCard({ item, subject, timeSlot, index, onDelete }: 
     </Draggable>
   );
 }
+
