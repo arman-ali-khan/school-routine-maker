@@ -13,8 +13,7 @@ export const DAYS_OF_WEEK: DayOfWeek[] = [
 
 export const DEFAULT_DAY_SETTINGS: DaySetting[] = DAYS_OF_WEEK.map(day => ({
   name: day,
-  isActive: !['Sunday', 'Saturday'].includes(day), // Monday-Friday active by default
-  // isWorkingDay: !['Sunday', 'Saturday'].includes(day), // Removed
+  isActive: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'].includes(day), // Sun-Thu active by default
 }));
 
 export const DEFAULT_TIME_SLOTS_PRESET: { startTime: string, endTime: string, isBreak?: boolean }[] = [
@@ -36,7 +35,7 @@ export const INITIAL_SCHEDULE_DATA: ScheduleData = {
   daySettings: DEFAULT_DAY_SETTINGS,
   scheduledItems: [],
   settings: {
-    customDayOrder: [...DAYS_OF_WEEK], // Default order
+    customDayOrder: [...DAYS_OF_WEEK], // Default order, all days available for reordering/activation
   },
 };
 
