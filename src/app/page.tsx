@@ -72,6 +72,7 @@ export default function HomePage() {
             onImportClick={handleImportClick}
             onExportAsImage={() => actions.exportAsImage(() => scheduleViewRef.current)}
             onExportAsPdf={() => actions.exportAsPdf(() => scheduleViewRef.current)}
+            onExportAsSimplifiedPdf={() => actions.exportAsSimplifiedPdf(() => scheduleViewRef.current)}
           />
           <input
             type="file"
@@ -132,4 +133,3 @@ export default function HomePage() {
     </ClientOnly>
   );
 }
-

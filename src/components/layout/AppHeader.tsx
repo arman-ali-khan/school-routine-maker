@@ -3,7 +3,7 @@
 
 import type React from 'react';
 import { Button } from "@/components/ui/button";
-import { FileDown, FileUp, Users, Clock, CalendarDays, Settings, Image as ImageIcon, FileText as PdfIcon } from "lucide-react";
+import { FileDown, FileUp, Users, Clock, CalendarDays, Settings, Image as ImageIcon, FileText as PdfIcon, FileArchive } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,6 +21,7 @@ interface AppHeaderProps {
   onImportClick: () => void; 
   onExportAsImage: () => void;
   onExportAsPdf: () => void;
+  onExportAsSimplifiedPdf: () => void;
 }
 
 export function AppHeader({
@@ -31,6 +32,7 @@ export function AppHeader({
   onImportClick,
   onExportAsImage,
   onExportAsPdf,
+  onExportAsSimplifiedPdf,
 }: AppHeaderProps) {
   return (
     <header className="bg-card p-4 shadow-md sticky top-0 z-50">
@@ -64,7 +66,11 @@ export function AppHeader({
               </DropdownMenuItem>
               <DropdownMenuItem onClick={onExportAsPdf}>
                 <PdfIcon className="mr-2 h-4 w-4" />
-                Export as PDF (placeholder)
+                Export as PDF
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={onExportAsSimplifiedPdf}>
+                <FileArchive className="mr-2 h-4 w-4" />
+                Export Simplified PDF
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
