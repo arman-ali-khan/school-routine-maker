@@ -1,8 +1,9 @@
+
 "use client";
 
 import type React from 'react';
 import { Button } from "@/components/ui/button";
-import { FileDown, FileUp, Users, Clock, CalendarDays, Settings } from "lucide-react";
+import { FileDown, FileUp, Users, Clock, CalendarDays, Settings, Image as ImageIcon, FileText as PdfIcon } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,7 +18,9 @@ interface AppHeaderProps {
   onOpenTimeSlotModal: () => void;
   onOpenDaySettingsModal: () => void;
   onExport: () => void;
-  onImportClick: () => void; // To trigger file input click
+  onImportClick: () => void; 
+  onExportAsImage: () => void;
+  onExportAsPdf: () => void;
 }
 
 export function AppHeader({
@@ -26,6 +29,8 @@ export function AppHeader({
   onOpenDaySettingsModal,
   onExport,
   onImportClick,
+  onExportAsImage,
+  onExportAsPdf,
 }: AppHeaderProps) {
   return (
     <header className="bg-card p-4 shadow-md sticky top-0 z-50">
@@ -45,11 +50,21 @@ export function AppHeader({
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={onExport}>
                 <FileDown className="mr-2 h-4 w-4" />
-                Export Schedule
+                Export Schedule (JSON)
               </DropdownMenuItem>
               <DropdownMenuItem onClick={onImportClick}>
                 <FileUp className="mr-2 h-4 w-4" />
-                Import Schedule
+                Import Schedule (JSON)
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuLabel>Advanced Export</DropdownMenuLabel>
+              <DropdownMenuItem onClick={onExportAsImage}>
+                <ImageIcon className="mr-2 h-4 w-4" />
+                Export as Image
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={onExportAsPdf}>
+                <PdfIcon className="mr-2 h-4 w-4" />
+                Export as PDF (placeholder)
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

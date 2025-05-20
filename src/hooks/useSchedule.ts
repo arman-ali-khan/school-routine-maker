@@ -8,11 +8,12 @@ import useLocalStorage from './useLocalStorage';
 import type { ScheduleData, Subject, TimeSlot, DaySetting, ScheduledItem, DayOfWeek } from '@/lib/types';
 import { INITIAL_SCHEDULE_DATA, LOCAL_STORAGE_KEY } from '@/lib/config';
 import { useToast } from '@/hooks/use-toast';
+import html2canvas from 'html2canvas';
 
 export function useSchedule() {
   const [data, setData] = useLocalStorage<ScheduleData>(LOCAL_STORAGE_KEY, INITIAL_SCHEDULE_DATA);
   const [isLoaded, setIsLoaded] = useState(false);
-  const [copiedItem, setCopiedItem] = useState<ScheduledItem | null>(null); // For copy/paste
+  const [copiedItem, setCopiedItem] = useState<ScheduledItem | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -43,7 +44,6 @@ export function useSchedule() {
     }
   }, [setData]);
 
-  // Subject Management
   const addSubject = (subject: Omit<Subject, 'id'>) => {
     const newSubject = { ...subject, id: uuidv4() };
     updateData(prev => ({ ...prev, subjects: [...prev.subjects, newSubject] }));
@@ -67,7 +67,6 @@ export function useSchedule() {
     toast({ title: "Subject Deleted", description: "Subject and its scheduled occurrences have been removed." });
   };
 
-  // Time Slot Management
   const addTimeSlot = (timeSlot: Omit<TimeSlot, 'id'>) => {
     const overlaps = data.timeSlots.some(ts => 
       (timeSlot.startTime < ts.endTime && timeSlot.endTime > ts.startTime)
@@ -98,7 +97,6 @@ export function useSchedule() {
     toast({ title: "Time Slot Deleted", description: "Time slot and its scheduled items have been removed." });
   };
   
-  // Day Settings Management
   const updateDaySettings = (updatedDaySettings: DaySetting[]) => {
     updateData(prev => ({ ...prev, daySettings: updatedDaySettings }));
   };
@@ -107,7 +105,6 @@ export function useSchedule() {
     updateData(prev => ({...prev, settings: { ...prev.settings, customDayOrder: newOrder }}));
   };
 
-  // Scheduled Item Management
   const addScheduledItem = (item: Omit<ScheduledItem, 'id'>) => {
     const isOccupied = data.scheduledItems.some(si => si.day === item.day && si.timeSlotId === item.timeSlotId);
     if (isOccupied) {
@@ -173,10 +170,11 @@ export function useSchedule() {
           return;
         }
         addScheduledItem({ subjectId, day: destDay, timeSlotId: destTimeSlotId });
+        // Toast for successful add is handled within addScheduledItem
         return;
       }
       
-      if (!isSourceBank) {
+      if (!isSourceBank) { // Dragging an item already on the schedule
         const itemIdToMove = draggableId.replace('scheduled-item-', '');
         const itemToMoveDetails = data.scheduledItems.find(si => si.id === itemIdToMove);
 
@@ -185,22 +183,22 @@ export function useSchedule() {
           return;
         }
 
-        if (existingItemInDest) {
-          if (existingItemInDest.id === itemIdToMove) return;
+        if (existingItemInDest) { // Destination is occupied, swap items
+          if (existingItemInDest.id === itemIdToMove) return; // Dragged to its own spot
           updateData(prev => ({
             ...prev,
             scheduledItems: prev.scheduledItems.map(si => {
-              if (si.id === itemIdToMove) {
+              if (si.id === itemIdToMove) { // This is the item being dragged
                 return { ...si, day: destDay, timeSlotId: destTimeSlotId };
               }
-              if (si.id === existingItemInDest.id) {
+              if (si.id === existingItemInDest.id) { // This is the item in the destination slot
                 return { ...si, day: itemToMoveDetails.day, timeSlotId: itemToMoveDetails.timeSlotId };
               }
               return si;
             }),
           }));
           toast({ title: "Items Swapped", description: "Scheduled items have been swapped." });
-        } else {
+        } else { // Destination is empty, move item
           updateData(prev => ({
             ...prev,
             scheduledItems: prev.scheduledItems.map(si =>
@@ -243,11 +241,8 @@ export function useSchedule() {
       day: targetDay,
       timeSlotId: targetTimeSlotId,
     });
-    // Toast for successful paste is handled within addScheduledItem
   };
 
-
-  // Export/Import
   const exportData = () => {
     try {
       const jsonString = JSON.stringify(data, null, 2);
@@ -260,7 +255,7 @@ export function useSchedule() {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-      toast({ title: "Data Exported", description: "Your schedule has been exported." });
+      toast({ title: "Data Exported", description: "Your schedule has been exported as JSON." });
     } catch (error) {
       toast({ variant: "destructive", title: "Export Error", description: "Could not export data." });
       console.error("Export error:", error);
@@ -300,12 +295,42 @@ export function useSchedule() {
     };
     reader.readAsText(file);
   };
+
+  const exportAsImage = async (element: HTMLElement | null) => {
+    if (!element) {
+      toast({ variant: "destructive", title: "Image Export Error", description: "Schedule element not found." });
+      return;
+    }
+    try {
+      const canvas = await html2canvas(element, {
+        logging: true,
+        useCORS: true,
+        scale: 2, // Increase scale for better resolution
+        backgroundColor: getComputedStyle(document.body).getPropertyValue('--background').trim() || '#E3F2FD' // Use theme background
+      });
+      const image = canvas.toDataURL('image/png', 1.0);
+      const link = document.createElement('a');
+      link.href = image;
+      link.download = 'routinely-schedule.png';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast({ title: "Image Exported", description: "Schedule exported as PNG." });
+    } catch (error) {
+      console.error("Error exporting as image:", error);
+      toast({ variant: "destructive", title: "Image Export Error", description: "Could not export schedule as image." });
+    }
+  };
+
+  const exportAsPdf = () => {
+    toast({ title: "Export as PDF", description: "This feature is not yet implemented. You can use your browser's Print to PDF function." });
+    // Placeholder for future PDF export functionality
+  };
   
   const sortedTimeSlots = data.timeSlots ? [...data.timeSlots].sort((a, b) => a.startTime.localeCompare(b.startTime)) : [];
   const customDayOrder = data.settings?.customDayOrder || INITIAL_SCHEDULE_DATA.settings.customDayOrder;
   const daySettings = data.daySettings || INITIAL_SCHEDULE_DATA.daySettings;
   const activeDays = customDayOrder.filter(dayName => daySettings.find(ds => ds.name === dayName)?.isActive);
-
 
   return {
     isLoaded,
@@ -315,7 +340,7 @@ export function useSchedule() {
     scheduledItems: data.scheduledItems || [],
     customDayOrder: customDayOrder,
     activeDays,
-    copiedItem, // Expose copied item state
+    copiedItem,
     actions: {
       addSubject,
       updateSubject,
@@ -330,10 +355,10 @@ export function useSchedule() {
       handleDragEnd,
       exportData,
       importData,
-      handleCopyItem, // Expose copy action
-      handlePasteItem, // Expose paste action
+      handleCopyItem,
+      handlePasteItem,
+      exportAsImage,
+      exportAsPdf,
     },
   };
 }
-
-    

@@ -22,7 +22,7 @@ export default function HomePage() {
     daySettings,
     scheduledItems,
     customDayOrder,
-    copiedItem, // Get copiedItem state
+    copiedItem,
     actions,
   } = useSchedule();
 
@@ -31,11 +31,11 @@ export default function HomePage() {
   const [isDaySettingsModalOpen, setIsDaySettingsModalOpen] = useState(false);
   
   const importFileInputRef = useRef<HTMLInputElement>(null);
+  const scheduleViewRef = useRef<HTMLDivElement>(null); // Ref for the schedule view element
 
   const handleImportClick = () => {
     importFileInputRef.current?.click();
   };
-
 
   if (!isLoaded) {
     return (
@@ -70,6 +70,8 @@ export default function HomePage() {
             onOpenDaySettingsModal={() => setIsDaySettingsModalOpen(true)}
             onExport={actions.exportData}
             onImportClick={handleImportClick}
+            onExportAsImage={() => actions.exportAsImage(scheduleViewRef.current)}
+            onExportAsPdf={actions.exportAsPdf}
           />
           <input
             type="file"
@@ -85,6 +87,7 @@ export default function HomePage() {
             </aside>
             <section className="flex-1 flex flex-col h-full min-w-0">
               <ScheduleView
+                ref={scheduleViewRef} // Pass the ref to ScheduleView
                 daySettings={daySettings}
                 customDayOrder={customDayOrder}
                 timeSlots={timeSlots}
@@ -92,9 +95,9 @@ export default function HomePage() {
                 subjects={subjects}
                 onDeleteItem={actions.deleteScheduledItem}
                 addScheduledItem={actions.addScheduledItem}
-                copiedItem={copiedItem} // Pass copiedItem
-                onCopyItem={actions.handleCopyItem} // Pass copy action
-                onPasteItem={actions.handlePasteItem} // Pass paste action
+                copiedItem={copiedItem}
+                onCopyItem={actions.handleCopyItem}
+                onPasteItem={actions.handlePasteItem}
               />
             </section>
           </main>
@@ -129,5 +132,3 @@ export default function HomePage() {
     </ClientOnly>
   );
 }
-
-    
