@@ -20,39 +20,33 @@ export function useSchedule() {
     setIsLoaded(true);
   }, []);
   
-  const updateData = useCallback((updater: (prev: ScheduleData) => ScheduleData) => {
-    setData(prevData => {
-      const updated = updater(prevData);
-      if (!updated.settings) {
-        updated.settings = { 
-          customDayOrder: prevData.settings?.customDayOrder || INITIAL_SCHEDULE_DATA.settings.customDayOrder 
-        };
-      } else if (!updated.settings.customDayOrder) {
-        updated.settings.customDayOrder = prevData.settings?.customDayOrder || INITIAL_SCHEDULE_DATA.settings.customDayOrder;
-      }
-      return updated;
-    });
-  }, [setData]);
 
   const addSubject = (subject: Omit<Subject, 'id'>) => {
     const newSubject = { ...subject, id: uuidv4() };
-    updateData(prev => ({ ...prev, subjects: [...prev.subjects, newSubject] }));
+    setData(prev => ({ 
+      ...prev, 
+      subjects: [...prev.subjects, newSubject],
+      // Ensure settings are preserved or initialized
+      settings: prev.settings || INITIAL_SCHEDULE_DATA.settings,
+    }));
     toast({ title: "Subject Added", description: `${newSubject.name} has been added.` });
   };
 
   const updateSubject = (updatedSubject: Subject) => {
-    updateData(prev => ({
+    setData(prev => ({
       ...prev,
-      subjects: prev.subjects.map(s => s.id === updatedSubject.id ? updatedSubject : s),
+      subjects: prev.subjects.map(s => s.id === updatedSubject.id ? { ...updatedSubject } : { ...s }),
+      settings: prev.settings || INITIAL_SCHEDULE_DATA.settings,
     }));
     toast({ title: "Subject Updated", description: `${updatedSubject.name} has been updated.` });
   };
 
   const deleteSubject = (subjectId: string) => {
-    updateData(prev => ({
+    setData(prev => ({
       ...prev,
       subjects: prev.subjects.filter(s => s.id !== subjectId),
       scheduledItems: prev.scheduledItems.filter(si => si.subjectId !== subjectId),
+      settings: prev.settings || INITIAL_SCHEDULE_DATA.settings,
     }));
     toast({ title: "Subject Deleted", description: "Subject and its scheduled occurrences have been removed." });
   };
@@ -66,39 +60,53 @@ export function useSchedule() {
       return;
     }
     const newTimeSlot = { ...timeSlot, id: uuidv4() };
-    updateData(prev => ({ 
+    setData(prev => ({ 
       ...prev, 
-      timeSlots: [...prev.timeSlots, newTimeSlot].sort((a,b) => a.startTime.localeCompare(b.startTime)) 
+      timeSlots: [...prev.timeSlots, newTimeSlot].sort((a,b) => a.startTime.localeCompare(b.startTime)),
+      settings: prev.settings || INITIAL_SCHEDULE_DATA.settings,
     }));
     toast({ title: "Time Slot Added" });
   };
 
   const updateTimeSlot = (updatedTimeSlot: TimeSlot) => {
-    updateData(prev => ({
+    setData(prev => ({
       ...prev,
-      timeSlots: prev.timeSlots.map(ts => ts.id === updatedTimeSlot.id ? updatedTimeSlot : ts).sort((a,b) => a.startTime.localeCompare(b.startTime)),
+      timeSlots: prev.timeSlots.map(ts => ts.id === updatedTimeSlot.id ? { ...updatedTimeSlot } : { ...ts }).sort((a,b) => a.startTime.localeCompare(b.startTime)),
+      settings: prev.settings || INITIAL_SCHEDULE_DATA.settings,
     }));
      toast({ title: "Time Slot Updated" });
   };
 
   const deleteTimeSlot = (timeSlotId: string) => {
-    updateData(prev => ({
+    setData(prev => ({
       ...prev,
       timeSlots: prev.timeSlots.filter(ts => ts.id !== timeSlotId),
       scheduledItems: prev.scheduledItems.filter(si => si.timeSlotId !== timeSlotId),
+      settings: prev.settings || INITIAL_SCHEDULE_DATA.settings,
     }));
     toast({ title: "Time Slot Deleted", description: "Time slot and its scheduled items have been removed." });
   };
   
   const updateDaySettings = (updatedDaySettingsFromModal: DaySetting[]) => {
     setData(prevScheduleData => {
-      // Ensure a new array where each object is also a new copy
-      const newDaySettings = updatedDaySettingsFromModal.map(setting => ({ ...setting }));
+      // Create a new array of new DaySetting objects, only copying necessary properties
+      const newDaySettings = updatedDaySettingsFromModal.map(setting => ({ 
+        name: setting.name, 
+        isActive: setting.isActive 
+      }));
       
-      // Create the new state object
-      const newScheduleDataState = {
-        ...prevScheduleData, // Spread all existing properties
-        daySettings: newDaySettings, // Replace daySettings with the new immutable array
+      // Construct the new state, ensuring all top-level properties are new if they are arrays/objects
+      const newScheduleDataState: ScheduleData = {
+        subjects: prevScheduleData.subjects.map(s => ({...s})),
+        timeSlots: prevScheduleData.timeSlots.map(ts => ({...ts})),
+        scheduledItems: prevScheduleData.scheduledItems.map(si => ({...si})),
+        daySettings: newDaySettings, // Crucial: use the new array of new objects
+        settings: {
+          // Ensure customDayOrder is a new array reference if it exists, otherwise initialize from default
+          customDayOrder: prevScheduleData.settings?.customDayOrder 
+                          ? [...prevScheduleData.settings.customDayOrder]
+                          : [...INITIAL_SCHEDULE_DATA.settings.customDayOrder],
+        },
       };
       return newScheduleDataState;
     });
@@ -108,9 +116,11 @@ export function useSchedule() {
   const updateCustomDayOrder = (newOrder: DayOfWeek[]) => {
     setData(prevScheduleData => ({
       ...prevScheduleData,
-      settings: { 
-        ...(prevScheduleData.settings || INITIAL_SCHEDULE_DATA.settings), 
-        customDayOrder: [...newOrder], 
+      // Ensure daySettings objects are also new if their order might be perceived as changed downstream
+      daySettings: prevScheduleData.daySettings.map(ds => ({...ds})), 
+      settings: {
+        ...(prevScheduleData.settings || INITIAL_SCHEDULE_DATA.settings), // Keep other settings if any
+        customDayOrder: [...newOrder], // new array for customDayOrder
       },
     }));
     toast({ title: "Day Order Updated" });
@@ -124,7 +134,11 @@ export function useSchedule() {
       return null;
     }
     const newScheduledItem = { ...item, id: uuidv4() };
-    updateData(prev => ({ ...prev, scheduledItems: [...prev.scheduledItems, newScheduledItem] }));
+    setData(prev => ({ 
+        ...prev, 
+        scheduledItems: [...prev.scheduledItems, newScheduledItem],
+        settings: prev.settings || INITIAL_SCHEDULE_DATA.settings,
+    }));
     const subject = data.subjects.find(s => s.id === item.subjectId);
     const timeSlot = data.timeSlots.find(ts => ts.id === item.timeSlotId);
     toast({ title: "Item Scheduled", description: `${subject?.name || 'Subject'} scheduled for ${item.day} at ${timeSlot?.startTime}.`});
@@ -135,9 +149,10 @@ export function useSchedule() {
     const itemToDelete = data.scheduledItems.find(si => si.id === itemId);
     if (!itemToDelete) return;
     const subject = data.subjects.find(s => s.id === itemToDelete.subjectId);
-    updateData(prev => ({
+    setData(prev => ({
       ...prev,
       scheduledItems: prev.scheduledItems.filter(si => si.id !== itemId),
+      settings: prev.settings || INITIAL_SCHEDULE_DATA.settings,
     }));
     toast({ title: "Item Removed", description: `${subject?.name || 'Item'} on ${itemToDelete.day} removed from schedule.` });
   };
@@ -185,26 +200,28 @@ export function useSchedule() {
         }
         const addedItem = addScheduledItem({ subjectId: subjectIdFromBank, day: destDay, timeSlotId: destTimeSlotId });
         if (addedItem) {
-             // Toast is handled by addScheduledItem
+             toast({ title: "Item Added", description: `Subject added to ${destDay} at ${targetTimeSlot?.startTime}.` });
         }
       } else if (movingItemDetails) { 
         if (existingItemInDest) { 
           if (existingItemInDest.id === movingItemDetails.id) return; 
-          updateData(prev => ({
+          setData(prev => ({
             ...prev,
             scheduledItems: prev.scheduledItems.map(si => {
               if (si.id === movingItemDetails.id) return { ...si, day: destDay, timeSlotId: destTimeSlotId };
               if (si.id === existingItemInDest.id) return { ...si, day: movingItemDetails.day, timeSlotId: movingItemDetails.timeSlotId };
               return si;
-            }).map(item => ({...item})), // Ensure new objects in the array
+            }).map(item => ({...item})),
+            settings: prev.settings || INITIAL_SCHEDULE_DATA.settings,
           }));
           toast({ title: "Items Swapped" });
         } else { 
-          updateData(prev => ({
+          setData(prev => ({
             ...prev,
             scheduledItems: prev.scheduledItems.map(si =>
               si.id === movingItemDetails.id ? { ...si, day: destDay, timeSlotId: destTimeSlotId } : si
-            ).map(item => ({...item})), // Ensure new objects in the array
+            ).map(item => ({...item})),
+            settings: prev.settings || INITIAL_SCHEDULE_DATA.settings,
           }));
           toast({ title: "Item Moved" });
         }
@@ -273,15 +290,18 @@ export function useSchedule() {
         const jsonString = e.target?.result as string;
         const importedData = JSON.parse(jsonString) as ScheduleData;
         
+        // Basic validation for the structure of importedData
         if (
           typeof importedData.subjects === 'undefined' ||
           typeof importedData.timeSlots === 'undefined' ||
           typeof importedData.daySettings === 'undefined' ||
           typeof importedData.scheduledItems === 'undefined' ||
-          typeof importedData.settings?.customDayOrder === 'undefined'
+          typeof importedData.settings?.customDayOrder === 'undefined' // Ensure settings and customDayOrder exist
         ) {
           throw new Error("Invalid data structure: Missing essential properties.");
         }
+        // Further validation can be added here (e.g. check types of properties)
+        
         setData(importedData); 
         toast({ title: "Data Imported", description: "Your schedule has been imported successfully." });
       } catch (error) {
@@ -304,10 +324,10 @@ export function useSchedule() {
     }
     try {
       const canvas = await html2canvas(element, {
-        logging: true,
+        logging: false, // reduce console noise
         useCORS: true,
         scale: 2, 
-        backgroundColor: '#E3F2FD' 
+        backgroundColor: '#E3F2FD' // Explicit hex color
       });
       const image = canvas.toDataURL('image/png', 1.0);
       const link = document.createElement('a');
@@ -361,3 +381,4 @@ export function useSchedule() {
     },
   };
 }
+
